@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.example.wavereader.ui.theme.WaveReaderTheme
+import com.example.wavereader.viewmodels.WaveViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -15,7 +16,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             WaveReaderTheme {
-                WaveApp(viewModel = viewModel)
+                WaveApp(
+                    viewModel = viewModel,
+                )
             }
         }
     }
