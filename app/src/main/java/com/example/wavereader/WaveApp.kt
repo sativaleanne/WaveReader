@@ -23,11 +23,11 @@ import com.example.wavereader.data.Screen
 import com.example.wavereader.ui.RecordDataScreen
 import com.example.wavereader.ui.SearchDataScreen
 import com.example.wavereader.viewmodels.ServiceViewModel
-import com.example.wavereader.viewmodels.WaveViewModel
+import com.example.wavereader.viewmodels.SensorViewModel
 
 
 @Composable
-fun WaveApp(viewModel: WaveViewModel) {
+fun WaveApp(viewModel: SensorViewModel) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentScreen = Screen.valueOf(
@@ -65,7 +65,7 @@ fun WaveApp(viewModel: WaveViewModel) {
 
 @Composable
 fun OptionsBar(
-    viewModel: WaveViewModel,
+    viewModel: SensorViewModel,
     navigateRecord: () -> Unit,
     navigateSearch: () -> Unit
 ) {

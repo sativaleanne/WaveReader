@@ -6,13 +6,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import com.example.wavereader.ui.theme.WaveReaderTheme
-import com.example.wavereader.viewmodels.WaveViewModel
+import com.example.wavereader.viewmodels.SensorViewModel
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val viewModel: WaveViewModel by viewModels()
+        val viewModel: SensorViewModel by viewModels()
         enableEdgeToEdge()
         setContent {
             WaveReaderTheme {
