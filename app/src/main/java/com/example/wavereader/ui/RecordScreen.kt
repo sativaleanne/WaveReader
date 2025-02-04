@@ -13,13 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.wavereader.viewmodels.WaveUiState
-import com.example.wavereader.viewmodels.WaveViewModel
+import com.example.wavereader.viewmodels.SensorViewModel
 
 @Composable
 fun RecordDataScreen(
-    viewModel: WaveViewModel,
+    viewModel: SensorViewModel,
     uiState: WaveUiState
 ) {
     var isSensorActive by remember { mutableStateOf(false) }
@@ -28,17 +27,18 @@ fun RecordDataScreen(
         modifier = Modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ShowRecordData(viewModel = viewModel, uiState = uiState)
+        ShowRecordData(uiState = uiState)
         Spacer(modifier = Modifier)
         // Toggle Button
         Button(
             modifier = Modifier.padding(16.dp),
-            //.align(Alignment.CenterHorizontally),
             onClick = {
                 isSensorActive = !isSensorActive
                 if (isSensorActive) {
+                   // viewModel.startFakeWaveData()
                     viewModel.startSensors()
                 } else {
+                    //viewModel.stopFakeWaveData()
                     viewModel.stopSensors()
                 }
             }
@@ -50,40 +50,19 @@ fun RecordDataScreen(
 
 @Composable
 fun ShowRecordData(
-    viewModel: WaveViewModel,
     uiState: WaveUiState
 ) {
     Column(
         modifier = Modifier
             .padding(16.dp),
     ) {
-        // Tilt X
-        Text(
-            text = "Tilt X: %.2f°".format(uiState.tiltX),
-            fontSize = 18.sp,
-            modifier = Modifier//.padding(bottom = 4.dp)
-        )
-        // Tilt Y
-        Text(
-            text = "Tilt Y: %.2f°".format(uiState.tiltY),
-            fontSize = 18.sp,
-            modifier = Modifier
-        )
-        // Tilt Z
-        Text(
-            text = "Tilt Z: %.2f°".format(uiState.tiltZ),
-            fontSize = 18.sp,
-            modifier = Modifier
-        )
-        Text(
-            text = "Height: %.2f°".format(uiState.height),
-            fontSize = 18.sp,
-            modifier = Modifier
-        )
-        Text(
-            text = "Frequency: %.2f°".format(uiState.frequency),
-            fontSize = 18.sp,
-            modifier = Modifier
-        )
+        uiState.let {
+            Column {
+                Text("Wave Height: ${it.height} feet")
+                Text("Wave Period: ${it.period} seconds")
+                Text("Wave Direction: ${it.direction} degrees")
+                DrawSensorGraph(it.measuredWaveList)
+            }
+        }
     }
 }
