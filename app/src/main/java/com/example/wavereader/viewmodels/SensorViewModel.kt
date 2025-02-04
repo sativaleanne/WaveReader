@@ -9,11 +9,10 @@ import android.hardware.SensorManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.wavereader.model.MeasuredWaveData
-import com.example.wavereader.waveCalculator.calculateDominantFrequency
-import com.example.wavereader.waveCalculator.calculateFft
 import com.example.wavereader.waveCalculator.calculateWaveHeight
 import com.example.wavereader.waveCalculator.calculateWavePeriod
 import com.example.wavereader.testData.FakeMeasuredWaveData
+import com.example.wavereader.waveCalculator.calculateWaveDirection
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,9 +25,6 @@ data class WaveUiState(
         val height: Float? = null,
         val period: Float? = null,
         val direction: Float? = null,
-        val tiltX: Float? = null,
-        val tiltY: Float? = null,
-        val tiltZ: Float? = null,
 )
 
 class SensorViewModel(application: Application) : AndroidViewModel(application), SensorEventListener {
@@ -52,6 +48,7 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         private val accelerationData = mutableListOf<Array<Float>>()
         private val verticalAcceleration = mutableListOf<Float>()
         private var samplingRate: Float = 0f
+        private var dt: Float = 0f
 
         //For testing purposes
         fun startFakeWaveData(){
@@ -132,8 +129,11 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 //Adjust sampling rate and timestamp
                 val currentTimestamp = event.timestamp
                 if (lastTimestamp != 0L) {
-                        samplingRate = 1.0f / ((currentTimestamp - lastTimestamp) / 1000000000f) // Calculate in Hz
+                        //TODO seperate out
+                        dt = (currentTimestamp - lastTimestamp) / 1000000000f
+                        samplingRate = 1.0f / ((currentTimestamp - lastTimestamp) / 1000000000f)
                         println("Sampling Rate: $samplingRate")
+                        println("TimeStep dt: $dt")
                 }
                 lastTimestamp = currentTimestamp
 
@@ -179,30 +179,26 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 verticalAcceleration.add(linearAcceleration[2])
 
                 // Process data after collecting enough samples (10 seconds from 60,000 microseconds)
-                if (accelerationData.size > 170) {
+                if ((accelerationData.size > 170) and (verticalAcceleration.size > 170)) {
                         accelerationData.removeAt(0)
-                }
-                if (verticalAcceleration.size > 170) {
                         verticalAcceleration.removeAt(0)
+                        processData()
                 }
-                processData()
         }
 
 
         private fun processData() {
-                val fftData = calculateFft(verticalAcceleration)
-
-                val dominantFrequency = calculateDominantFrequency(fftData, samplingRate)
-                println("Dominant Frequency: $dominantFrequency")
-
-                val waveHeight = calculateWaveHeight(verticalAcceleration)
-                val wavePeriod = calculateWavePeriod(dominantFrequency)
+                val waveHeight = calculateWaveHeight(verticalAcceleration, dt)
+                val wavePeriod = calculateWavePeriod(verticalAcceleration, samplingRate)
+                val waveDirection = calculateWaveDirection(accelerationData)
                 println("Wave Height: $waveHeight")
                 println("Wave Period: $wavePeriod")
+                println("Wave Direction: $waveDirection")
 
                 updateHeight(waveHeight)
                 updatePeriod(wavePeriod)
-                updateMeasuredWaveData(waveHeight, wavePeriod, 0f)
+                updateDirection(waveDirection)
+                updateMeasuredWaveData(waveHeight, wavePeriod, waveDirection)
         }
 
 }

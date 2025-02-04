@@ -1,72 +1,83 @@
 package com.example.wavereader.waveCalculator
 
-import org.apache.commons.math3.complex.Complex
 import org.jtransforms.fft.FloatFFT_1D
+import kotlin.math.atan2
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 
 // Wave height calculation
-fun calculateWaveHeight(acceleration: List<Float>): Float {
+fun calculateWaveHeight(acceleration: List<Float>, dt: Float): Float {
 
+    val verticalDisplacement = doubleIntegrate(acceleration, dt)
     // Calculate peak-to-peak distance
-    val maxAccel = acceleration.maxOrNull() ?: 0f
-    val minAccel = acceleration.minOrNull() ?: 0f
-    return maxAccel - minAccel
+    val max = verticalDisplacement.maxOrNull() ?: 0f
+    val min = verticalDisplacement.minOrNull() ?: 0f
+    return max - min
+}
+
+// Double integration for acceleration to velocity to displacement
+fun doubleIntegrate(acceleration: List<Float>, dt: Float): List<Float> {
+    val velocity = mutableListOf(0f)
+    val displacement = mutableListOf(0f)
+
+    for (i in 1 until acceleration.size) {
+        val v = velocity.last() + acceleration[i] * dt
+        velocity.add(v)
+
+        val d = displacement.last() + v * dt
+        displacement.add(d)
+    }
+
+    return displacement
 }
 
 // Wave Period = 1/f
-fun calculateWavePeriod(dominantFrequency: Float): Float {
-    return if (dominantFrequency > 0) {
-        1/dominantFrequency
-    } else 0f
+fun calculateWavePeriod(verticalAcceleration: List<Float>, samplingRate: Float): Float {
+    val peakFrequency = calculateFft(verticalAcceleration, samplingRate)
+    return if (peakFrequency > 0) 1 / peakFrequency else 0f
 }
 
 // Use Fast Fourier Transform to transform from temporal domain to frequency domain
-fun calculateFft(verticalAcceleration: List<Float>): List<Float> {
+// Return peak frequency
+fun calculateFft(verticalAcceleration: List<Float>, samplingRate: Float): Float {
+
     if (verticalAcceleration.isEmpty()) {
-        println("Warning: Input list is empty!")
-        return emptyList()
+        println("Warning: data is empty!")
+        return 0f
     }
 
     val n = verticalAcceleration.size
-    //val dataArray = verticalAcceleration.map { Complex(it.toDouble(), 0.0) }
-    val dataArray = verticalAcceleration.toFloatArray().copyOf(n * 2)
-
-    //println("Input to FFT: ${dataArray.contentToString()}")
-
-    // Perform FFT
     val fft = FloatFFT_1D(n.toLong())
-    fft.complexForward(dataArray)
 
-    //println("FFT Data After Transform: ${dataArray.contentToString()}")
-
-    //Get Magnitude
-    val magnitudes = FloatArray(n)
-    for (i in 0 until (n)) {
-        val real = dataArray[2 * i]     // Real part
-        val imag = dataArray[2 * i + 1] // Imaginary part
-        magnitudes[i] = sqrt(real.pow(2) + imag.pow(2)) // Magnitude
+    //Create array twice the size and add imaginary numbers for complex array
+    val fftArray = FloatArray(2 * n)
+    for (i in verticalAcceleration.indices) {
+        fftArray[2 * i] = verticalAcceleration[i]
+        fftArray[2 * i + 1] = 0f
     }
 
-    println("Computed Magnitude List: ${magnitudes.contentToString()}")
-    return magnitudes.asList()
-}
+    // Perform FFT
+    fft.realForward(fftArray)
 
-// TODO Unsure if needed
-fun calculateMagnitudes(acceleration: List<Array<Float>>): List<Float>{
-    return acceleration.map { a ->
-        sqrt(a[0].pow(2) + a[1].pow(2) + a[2].pow(2))
-    }.also { println("Magnitude: $it") }
-}
+    println("FFT Data After Transform: ${fftArray.contentToString()}")
 
-// Dominant Frequency calculation
-fun calculateDominantFrequency(fft: List<Float>, samplingRate: Float): Float {
-    val maxNum = fft.maxOrNull() ?: return 0f
-    val maxIndex = fft.indexOf(maxNum)
-    val fftSize = fft.size
+    //Get magnitudes and find peak frequency
+    var maxMagnitude = 0f
+    var peakIndex = 0
 
-    return (maxIndex * samplingRate) / fftSize
+    for (i in 1 until n / 2) { // Only consider positive frequencies
+        val real = fftArray[2 * i]
+        val imaginary = fftArray[2 * i + 1]
+        val magnitude = sqrt(real.pow(2) + imaginary.pow(2))
+
+        if (magnitude > maxMagnitude) {
+            maxMagnitude = magnitude
+            peakIndex = i
+        }
+    }
+    // Convert index to frequency
+    return peakIndex * samplingRate / n
 }
 
 // TODO Unsure if needed, possibly for direction
@@ -76,7 +87,17 @@ fun getPeakAcceleration(acceleration: List<Float>): Float {
 
 //TODO
 // Direction calculation
-// Variables to store cumulative tilt values
-fun calculateWaveDirection(rotationX: Float, rotationY: Float, rotationZ: Float, dt: Float) {
+// Temporary solution finding angle of dominant motion
+fun calculateWaveDirection(acceleration: List<Array<Float>>): Float {
+    val ax = mutableListOf<Float>()
+    val ay = mutableListOf<Float>()
+    //separate out x and y values
+    for (i in acceleration.indices){
+        ax.add(acceleration[i][0])
+        ay.add(acceleration[i][1])
+    }
+    val avgX = ax.average().toFloat()
+    val avgY = ay.average().toFloat()
 
+    return atan2(avgY, avgX) * (180 / Math.PI.toFloat())
 }
