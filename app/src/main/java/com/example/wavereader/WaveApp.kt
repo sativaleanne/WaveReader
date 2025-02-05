@@ -22,6 +22,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.wavereader.data.Screen
 import com.example.wavereader.ui.RecordDataScreen
 import com.example.wavereader.ui.SearchDataScreen
+import com.example.wavereader.viewmodels.LocationViewModel
 import com.example.wavereader.viewmodels.ServiceViewModel
 import com.example.wavereader.viewmodels.SensorViewModel
 

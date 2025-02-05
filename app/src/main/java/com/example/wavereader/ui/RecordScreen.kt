@@ -35,7 +35,7 @@ fun RecordDataScreen(
             onClick = {
                 isSensorActive = !isSensorActive
                 if (isSensorActive) {
-                   // viewModel.startFakeWaveData()
+                    //viewModel.startFakeWaveData()
                     viewModel.startSensors()
                 } else {
                     //viewModel.stopFakeWaveData()

@@ -22,22 +22,29 @@ sealed interface ServiceUiState {
     object Loading : ServiceUiState
 }
 
-class ServiceViewModel(private val waveApiRepository: WaveApiRepository) : ViewModel() {
+class ServiceViewModel(
+    private val waveApiRepository: WaveApiRepository,
+    private val locationViewModel: LocationViewModel
+) : ViewModel() {
     var serviceUiState: ServiceUiState by mutableStateOf(ServiceUiState.Loading)
         private set
 
-    //private val zipCode: String = savedStateHandle["zip"] ?:
-        //throw IllegalArgumentException("Missing Zip code")
-
-    fun validateZipCode(zipCode: String){
-        //TODO
+    init {
+        awaitLocationUpdates()
     }
 
-    fun fetchWaveData(zipCode: String) {
+    private fun awaitLocationUpdates() {
+        locationViewModel.coordinatesState.observeForever { (lat, lon) ->
+            fetchWaveData(lat, lon)
+        }
+    }
+
+
+    fun fetchWaveData(lat: Double, long: Double) {
         viewModelScope.launch {
             serviceUiState = ServiceUiState.Loading
             serviceUiState = try {
-                val dataResult = waveApiRepository.getWaveApiData()
+                val dataResult = waveApiRepository.getWaveApiData(lat, long)
                 println(dataResult)
                 ServiceUiState.Success(
                     waveData = dataResult
@@ -55,7 +62,8 @@ class ServiceViewModel(private val waveApiRepository: WaveApiRepository) : ViewM
             initializer {
                 val application = (this[APPLICATION_KEY] as WaveReaderApplication)
                 val waveApiRepository = application.container.waveApiRepository
-                ServiceViewModel(waveApiRepository = waveApiRepository)
+                val locationViewModel = application.container.locationViewModel
+                ServiceViewModel(waveApiRepository, locationViewModel)
             }
         }
     }

@@ -52,12 +52,6 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         //For testing purposes
         fun startFakeWaveData(){
-//                for (i in fakeSensorData.indices) {
-//                        val x = fakeSensorData[i].ax
-//                        val y = fakeSensorData[i].ay
-//                        val z = fakeSensorData[i].az
-//                        filterData(x, y, z)
-//                }
                 job = viewModelScope.launch {
                         generateFakeData.generateWaveData()
                                 .collect {      fakeWaveData ->
