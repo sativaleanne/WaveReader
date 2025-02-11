@@ -1,3 +1,21 @@
 <resources>
     <string name="app_name">WaveReader</string>
+    <string name="titlename">WaveReader</string>
+    <string name="informationbuttondescr">Information</string>
+    <string name="info_sensor_header">Using sensors to record wave data.</string>
+    <string name="info_sensor_body">This application uses androids built in motion Sensors such as acceloration and gyroscope to retrieve raw data. The raw data is then filtered to reduce noise on gravity components. The filter data is then processed to calculate wave height, wave period, and wave direction.</string>
+    <string name="info_api_header">Using location to get waves data.</string>
+    <string name="info_api_body">Entering in a zip code will allow the application to retrieve the zip codes longitude and latitude coordinates. Those coordinates are then used to get wave data from Marine API. The data hourly wave infromation from one day. Wave height, wave period, and wave direction is returned.</string>
+    <string name="dismiss_text">Dismiss</string>
+    <string name="latitude_longitude">Latitude: %1$s, Longitude: %2$s</string>
+    <string name="fetch_wave_data_button">Fetch Wave Data</string>
+    <string name="enter_zip_code_label">Enter Zip Code</string>
+    <string name="search_icon_descr">Search Icon</string>
+    <string name="clear_text_descr">Clear Text</string>
+    <string name="zip_code_error">Please enter a valid 5 digit zip code</string>
+    <string name="error_image_descr">Error</string>
+    <string name="loading_failed_text">Loading Failed</string>
+    <string name="loading_image_descr">Loading...</string>
+    <string name="pause_sensors_button">Pause Sensors</string>
+    <string name="record_button">Record</string>
 </resources>

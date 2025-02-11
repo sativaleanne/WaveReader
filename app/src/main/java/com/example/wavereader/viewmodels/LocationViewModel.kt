@@ -1,5 +1,6 @@
 package com.example.wavereader.viewmodels
 
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -19,8 +20,25 @@ class LocationViewModel(private val zipApiRepository: ZipApiRepository) : ViewMo
     private val _coordinatesState = MutableLiveData(Pair(0.0, 0.0))
     val coordinatesState: LiveData<Pair<Double, Double>> = _coordinatesState
 
+    var zipCode by mutableStateOf("")
+        private set
+
+    val zipRegex = Regex("^[0-9]{5}(?:-[0-9]{4})?\$")
+
     var locationError: Boolean by mutableStateOf(false)
         private set
+
+    val zipCodeHasErrors by derivedStateOf {
+        if(zipCode.isNotEmpty()) {
+            !zipRegex.matches(zipCode)
+        } else {
+            false
+        }
+    }
+
+    fun updateZipCode(input: String) {
+        zipCode = input
+    }
 
     fun updateCoordinates(lat: Double, lon: Double) {
         _coordinatesState.postValue(Pair(lat, lon))

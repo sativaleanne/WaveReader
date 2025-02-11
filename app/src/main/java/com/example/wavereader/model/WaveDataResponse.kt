@@ -40,13 +40,13 @@ data class Current (
     val interval: Long,
 
     @SerialName("wave_height")
-    val waveHeight: Float,
+    val waveHeight: Float? = 0f,
 
     @SerialName("wave_direction")
-    val waveDirection: Float,
+    val waveDirection: Float? = 0f,
 
     @SerialName("wave_period")
-    val wavePeriod: Float
+    val wavePeriod: Float? = 0f
 )
 
 @Serializable
@@ -69,12 +69,12 @@ data class Hourly (
     val time: List<String>,
 
     @SerialName("wave_height")
-    val waveHeight: List<Float>,
+    val waveHeight: List<Float?>,
 
     @SerialName("wave_direction")
-    val waveDirection: List<Float>,
+    val waveDirection: List<Float?>,
 
     @SerialName("wave_period")
-    val wavePeriod: List<Float>
+    val wavePeriod: List<Float?>
 )
 
