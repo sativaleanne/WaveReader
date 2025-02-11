@@ -19,6 +19,7 @@ okhttp = "4.11.0"
 retrofit2KotlinxSerializationConverter = "1.0.0"
 retrofitVersion = "2.9.0"
 runtimeLivedata = "1.7.7"
+protoliteWellKnownTypes = "18.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,6 +49,7 @@ retrofit2-kotlinx-serialization-converter = { module = "com.jakewharton.retrofit
 retrofit2-retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofitVersion" }
 ui-graphics = { module = "androidx.compose.ui:ui-graphics" }
 androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtime-livedata", version.ref = "runtimeLivedata" }
+protolite-well-known-types = { group = "com.google.firebase", name = "protolite-well-known-types", version.ref = "protoliteWellKnownTypes" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

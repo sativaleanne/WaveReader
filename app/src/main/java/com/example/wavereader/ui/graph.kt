@@ -2,12 +2,16 @@ package com.example.wavereader.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement.Center
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -22,13 +26,15 @@ import com.example.wavereader.testData.fakeWaveData
 @Composable
 fun DrawServiceGraph(waveData: Hourly) {
     Box(
-        modifier = Modifier.size(width = 600.dp, height = 300.dp)
-            .background(color = Color.White)
-            .fillMaxSize()
+        modifier = Modifier
+            .height(300.dp)
+            .background(Color.White)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+
     ) {
-        Graph(waveData.waveHeight, color = Color.Blue)
-        Graph(waveData.wavePeriod, color = Color.Green)
-        Graph(waveData.waveDirection, color = Color.Magenta)
+        Graph(waveData.waveHeight.filterNotNull(), color = Color.Blue)
+        Graph(waveData.wavePeriod.filterNotNull(), color = Color.Green)
+        Graph(waveData.waveDirection.filterNotNull(), color = Color.Magenta)
     }
 }
 
@@ -44,9 +50,11 @@ fun DrawSensorGraph(waveData: List<MeasuredWaveData>) {
         waveDirection += waveData[i].waveDirection
     }
     Box(
-        modifier = Modifier.size(width = 600.dp, height = 300.dp)
-            .background(color = Color.White)
-            .fillMaxSize()
+        modifier = Modifier
+            .height(300.dp)
+            .background(Color.White)
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
         Graph(waveHeight, color = Color.Blue)
         Graph(wavePeriod, color = Color.Green)
@@ -57,9 +65,8 @@ fun DrawSensorGraph(waveData: List<MeasuredWaveData>) {
 @Composable
 fun Graph(waveData: List<Float>, color: Color){
     Canvas(
-        modifier = Modifier.padding(8.dp)
-            .aspectRatio(2f)
-            .fillMaxSize()
+        modifier = Modifier.fillMaxSize()
+
     ) {
         //Draw Graph Boarder
         val barWidthPx = 0.5.dp.toPx()
@@ -77,8 +84,8 @@ fun Graph(waveData: List<Float>, color: Color){
                 strokeWidth = barWidthPx
             )
         }
-        val maxPoint = (waveData.maxOrNull() ?: 1f)
-        val minPoint = (waveData.minOrNull() ?: 0f)
+        val maxPoint = waveData.maxOrNull() ?: 1f
+        val minPoint = waveData.minOrNull() ?: 0f
 
         val graphWidth = size.width
         val graphHeight = size.height
