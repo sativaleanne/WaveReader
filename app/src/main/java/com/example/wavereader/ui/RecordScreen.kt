@@ -1,7 +1,10 @@
 package com.example.wavereader.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +39,9 @@ fun RecordDataScreen(
         Spacer(modifier = Modifier)
         // Toggle Button
         SensorButton(viewModel)
+        if(uiState.measuredWaveList.isNotEmpty()) {
+            ClearButton(viewModel)
+        }
     }
 }
 
@@ -67,6 +73,25 @@ fun SensorButton(
 }
 
 @Composable
+fun ClearButton(
+    viewModel: SensorViewModel
+) {
+    Button(
+        modifier = Modifier.padding(16.dp),
+        shape = RoundedCornerShape(9.dp),
+        onClick = {
+            if (viewModel.uiState.value.measuredWaveList.isNotEmpty()) {
+                //viewModel.startFakeWaveData()
+                viewModel.clearMeasuredWaveData()
+            }
+        },
+        elevation = ButtonDefaults.buttonElevation(1.dp)
+    ) {
+        Text(text = "Clear")
+    }
+}
+
+@Composable
 fun ShowRecordData(
     uiState: WaveUiState
 ) {
@@ -79,7 +104,13 @@ fun ShowRecordData(
                 Text("Wave Height: ${it.height} feet")
                 Text("Wave Period: ${it.period} seconds")
                 Text("Wave Direction: ${it.direction} degrees")
-                DrawSensorGraph(it.measuredWaveList)
+                Box(
+                    modifier = Modifier
+                        .height(300.dp)
+                        .fillMaxWidth()
+                ) {
+                    DrawSensorGraph(it.measuredWaveList)
+                }
             }
         }
     }

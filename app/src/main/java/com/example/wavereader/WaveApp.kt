@@ -112,9 +112,6 @@ fun WaveApp(viewModel: SensorViewModel) {
                 startDestination = Screen.Record.name,
             modifier = Modifier.padding(innerPadding)
             ) {
-            composable(route = Screen.Splash.name) {
-                //Splash Screen
-            }
             composable(route = Screen.Record.name) {
                 //Record Screen
                 RecordDataScreen(viewModel = viewModel, uiState = uiState)

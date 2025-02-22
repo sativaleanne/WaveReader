@@ -6,19 +6,16 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
 import com.example.wavereader.model.MeasuredWaveData
+import com.example.wavereader.waveCalculator.calculateWaveDirection
 import com.example.wavereader.waveCalculator.calculateWaveHeight
 import com.example.wavereader.waveCalculator.calculateWavePeriod
-import com.example.wavereader.testData.FakeMeasuredWaveData
-import com.example.wavereader.waveCalculator.calculateWaveDirection
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 data class WaveUiState(
         val measuredWaveList: List<MeasuredWaveData> = emptyList(),
@@ -29,10 +26,6 @@ data class WaveUiState(
 
 class SensorViewModel(application: Application) : AndroidViewModel(application), SensorEventListener {
 
-        //For testing purposes
-        private val generateFakeData = FakeMeasuredWaveData()
-        private var job: Job? = null
-
         private val _uiState = MutableStateFlow(WaveUiState())
         val uiState: StateFlow<WaveUiState> = _uiState.asStateFlow()
 
@@ -41,76 +34,74 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         private val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+        private val magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
 
-        // Previous timestamp to calculate time intervals
+        // Previous timestamp
         private var lastTimestamp: Long = 0L
 
-        private val accelerationData = mutableListOf<Array<Float>>()
+        private val gravity = FloatArray(3) { 0f }
+        private val alpha = 0.8f
+
+        private val horizontalAcceleration = mutableListOf<Array<Float>>()
         private val verticalAcceleration = mutableListOf<Float>()
+
+        private val accelerometerReading = FloatArray(3)
+        private val magnetometerReading = FloatArray(3)
+
+        private val rotationMatrix = FloatArray(9)
+        private val orientationAngles = FloatArray(3)
+
+
         private var samplingRate: Float = 0f
         private var dt: Float = 0f
 
-        //For testing purposes
-        fun startFakeWaveData(){
-                job = viewModelScope.launch {
-                        generateFakeData.generateWaveData()
-                                .collect {      fakeWaveData ->
-                                        updateMeasuredWaveData(fakeWaveData.waveHeight, fakeWaveData.wavePeriod, fakeWaveData.waveDirection)
+        private var startTime: Long = 0
+        private var startDataBufferTime: Long = 0
+        private var dataProcessTime: Long = 0
 
-                                }
-                }
-        }
 
-        fun stopFakeWaveData(){
-                job?.cancel()
-        }
-
-        private fun updateMeasuredWaveData(height: Float, period: Float, direction: Float) {
-
-                //Add latest data
-                val newMeasuredWaveData = MeasuredWaveData(height, period, direction)
-                updateHeight(height)
-                updatePeriod(period)
-                updateDirection(direction)
-
-                //Update state and remove oldest
+        private fun updateMeasuredWaveData(height: Float, period: Float, direction: Float, time: Float) {
                 _uiState.update { currentState ->
+                        val updatedList = currentState.measuredWaveList.toMutableList().apply {
+                                add(MeasuredWaveData(height, period, direction, time))
+                                if (size > 50) removeAt(0) // Maintain fixed of 50
+                        }
                         currentState.copy(
-                                measuredWaveList = (currentState.measuredWaveList + newMeasuredWaveData).takeLast(50)
-                        )
-                }
-        }
-
-
-        private fun updateHeight(height: Float) {
-                _uiState.update { currentState ->
-                        currentState.copy(
-                                height = height
-                        )
-                }
-        }
-
-        private fun updatePeriod(period: Float) {
-                _uiState.update { currentState ->
-                        currentState.copy(
-                                period = period
-                        )
-                }
-        }
-
-        private fun updateDirection(direction: Float) {
-                _uiState.update { currentState ->
-                        currentState.copy(
+                                measuredWaveList = updatedList,
+                                height = height,
+                                period = period,
                                 direction = direction
                         )
                 }
         }
 
+        fun clearMeasuredWaveData() {
+                _uiState.update { currentState ->
+                        val updatedList = currentState.measuredWaveList.toMutableList().apply {
+                                clear()
+                        }
+                        currentState.copy(
+                                measuredWaveList = updatedList,
+                                height = null,
+                                period = null,
+                                direction = null
+                        )
+                }
+                verticalAcceleration.clear()
+                horizontalAcceleration.clear()
+                lastTimestamp = 0L
+        }
+
         fun startSensors() {
+                startTime = SystemClock.elapsedRealtime()
+                startDataBufferTime = startTime
                 gyroscope?.let {
                         sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
                 }
                 accelerometer?.let {
+                        sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
+                }
+                magnetometer?.let {
                         sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI)
                 }
         }
@@ -120,79 +111,94 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         }
 
         override fun onSensorChanged(event: SensorEvent) {
-                //Adjust sampling rate and timestamp
-                val currentTimestamp = event.timestamp
-                if (lastTimestamp != 0L) {
-                        //TODO seperate out
-                        dt = (currentTimestamp - lastTimestamp) / 1000000000f
-                        samplingRate = 1.0f / ((currentTimestamp - lastTimestamp) / 1000000000f)
-                        println("Sampling Rate: $samplingRate")
-                        println("TimeStep dt: $dt")
-                }
-                lastTimestamp = currentTimestamp
 
+                val currentTime = SystemClock.elapsedRealtime()
+
+                updateSamplingRate(event.timestamp)
 
                 when (event.sensor.type) {
                         Sensor.TYPE_ACCELEROMETER -> {
-                                val x = event.values[0]
-                                val y = event.values[1]
-                                val z = event.values[2]
-                                println("Accelerometer: ${x}, ${y}, $z")
-                                filterData(x, y, z)
+                                filterData(event.values[0], event.values[1], event.values[2])
+                                accelerometerReading
+                                System.arraycopy(event.values, 0, accelerometerReading, 0, accelerometerReading.size)
                         }
                         Sensor.TYPE_GYROSCOPE -> {
-                                val rotationX = event.values[0]
-                                val rotationY = event.values[1]
-                                val rotationZ = event.values[2]
-                                val timestamp = event.timestamp
-                                println("Gyroscope: ${rotationX}, ${rotationY}, ${rotationZ}, $timestamp")
-                                //TODO gyroscope filtering and processing
+                                //TODO
                         }
-
-
+                        Sensor.TYPE_MAGNETIC_FIELD -> {
+                                System.arraycopy(event.values, 0, magnetometerReading, 0, magnetometerReading.size)
+                        }
                 }
 
+                // Process data only every 2 seconds
+                if (currentTime - dataProcessTime >= 2000L) {
+                        processData()
+                        dataProcessTime = currentTime
+                }
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
                 //
         }
 
-        private fun filterData(x: Float, y: Float, z: Float) {
+        private fun getMagneticHeading(): Float {
+                SensorManager.getRotationMatrix(rotationMatrix, null, accelerometerReading, magnetometerReading)
+                SensorManager.getOrientation(rotationMatrix, orientationAngles)
 
-                //Filter out the gravity difference
-                val gravity = 9.8f
-                val linearAcceleration = Array<Float>(3){ 0f }
-
-                linearAcceleration[0] = x - gravity;
-                linearAcceleration[1] = y - gravity;
-                linearAcceleration[2] = z - gravity;
-
-                // collect XYZ-axis data and Z-axis
-                accelerationData.add(linearAcceleration)
-                verticalAcceleration.add(linearAcceleration[2])
-
-                // Process data after collecting enough samples (10 seconds from 60,000 microseconds)
-                if ((accelerationData.size > 170) and (verticalAcceleration.size > 170)) {
-                        accelerationData.removeAt(0)
-                        verticalAcceleration.removeAt(0)
-                        processData()
-                }
+                val azimuth = Math.toDegrees(orientationAngles[0].toDouble()).toFloat()
+                return (azimuth + 360) % 360 // Normalize to 0-360°
         }
 
+        private fun updateSamplingRate(currentTimestamp: Long) {
+                if (lastTimestamp != 0L) {
+                        dt = (currentTimestamp - lastTimestamp) / 1_000_000_000f
+                        samplingRate = if (dt > 0) 1.0f / dt else 0f
+                }
+                lastTimestamp = currentTimestamp
+        }
+
+        private fun filterData(x: Float, y: Float, z: Float) {
+
+                // Low-pass filter for gravity
+                gravity[0] = alpha * gravity[0] + (1 - alpha) * x
+                gravity[1] = alpha * gravity[1] + (1 - alpha) * y
+                gravity[2] = alpha * gravity[2] + (1 - alpha) * z
+
+                // High-pass filter for linear acceleration
+                val linearAcceleration = arrayOf(x - gravity[0], y - gravity[1], z - gravity[2])
+
+                // Use X, Y axis for horizontal movement (Wave Direction)
+                horizontalAcceleration.add(arrayOf(linearAcceleration[0], linearAcceleration[1]))
+                // Use Z-axis for vertical movement (wave height and period calculations)
+                verticalAcceleration.add(linearAcceleration[2])
+
+                // Remove old data to keep buffer size consistent
+                if (verticalAcceleration.size > 256) verticalAcceleration.removeAt(0)
+                if (horizontalAcceleration.size > 256) horizontalAcceleration.removeAt(0)
+        }
 
         private fun processData() {
+
+                if (verticalAcceleration.size < 50 || horizontalAcceleration.size < 50) return
+                //if ((verticalAcceleration.isEmpty()) or (accelerationData.isEmpty())) return
+
+                val elapsedTime = (SystemClock.elapsedRealtime() - startTime) / 1000f
+
                 val waveHeight = calculateWaveHeight(verticalAcceleration, dt)
                 val wavePeriod = calculateWavePeriod(verticalAcceleration, samplingRate)
-                val waveDirection = calculateWaveDirection(accelerationData)
+
+                val accelX = horizontalAcceleration.map{ it[0] }
+                val accelY = horizontalAcceleration.map { it[1] }
+                var waveDirection = calculateWaveDirection(accelX, accelY)
+
+                // Align with magnetic north
+                waveDirection = (waveDirection + getMagneticHeading()) % 360
+
                 println("Wave Height: $waveHeight")
                 println("Wave Period: $wavePeriod")
                 println("Wave Direction: $waveDirection")
 
-                updateHeight(waveHeight)
-                updatePeriod(wavePeriod)
-                updateDirection(waveDirection)
-                updateMeasuredWaveData(waveHeight, wavePeriod, waveDirection)
-        }
+                updateMeasuredWaveData(waveHeight, wavePeriod, waveDirection, elapsedTime)
 
+        }
 }
