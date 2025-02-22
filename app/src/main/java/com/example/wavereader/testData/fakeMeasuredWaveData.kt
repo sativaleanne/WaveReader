@@ -16,7 +16,7 @@ class FakeMeasuredWaveData {
             val wavePeriod = random.nextDouble(2.0, 10.0) // Random period between 2s - 10s
             val waveDirection = random.nextDouble(0.0, 360.0) // Random direction 0° - 360°
 
-            emit(MeasuredWaveData(waveHeight.toFloat(), wavePeriod.toFloat(), waveDirection.toFloat()))
+            emit(MeasuredWaveData(waveHeight.toFloat(), wavePeriod.toFloat(), waveDirection.toFloat(), System.currentTimeMillis().toFloat()))
             delay(1000) // Simulate 1-second interval
         }
     }

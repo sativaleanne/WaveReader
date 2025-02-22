@@ -34,41 +34,45 @@ fun doubleIntegrate(acceleration: List<Float>, dt: Float): List<Float> {
 
 // Wave Period = 1/f
 fun calculateWavePeriod(verticalAcceleration: List<Float>, samplingRate: Float): Float {
-    val peakFrequency = calculateFft(verticalAcceleration, samplingRate)
+    if (verticalAcceleration.isEmpty()) {
+        println("Data is empty!")
+        return 0f
+    }
+    val n = verticalAcceleration.size
+    val fft = getFft(verticalAcceleration, n)
+    val peakFrequency = getPeakIndex(fft, n) * samplingRate / n
     return if (peakFrequency > 0) 1 / peakFrequency else 0f
 }
 
+// Calculate FFT
 // Use Fast Fourier Transform to transform from temporal domain to frequency domain
-// Return peak frequency
-fun calculateFft(verticalAcceleration: List<Float>, samplingRate: Float): Float {
+fun getFft(data: List<Float>, n: Int): FloatArray {
 
-    if (verticalAcceleration.isEmpty()) {
-        println("Warning: data is empty!")
-        return 0f
-    }
-
-    val n = verticalAcceleration.size
     val fft = FloatFFT_1D(n.toLong())
 
     //Create array twice the size and add imaginary numbers for complex array
-    val fftArray = FloatArray(2 * n)
-    for (i in verticalAcceleration.indices) {
-        fftArray[2 * i] = verticalAcceleration[i]
-        fftArray[2 * i + 1] = 0f
+    val fftArray = FloatArray(2*n)
+    for (i in data.indices) {
+        fftArray[ 2 * i ] = data[i]
+        fftArray[ 2 * i + 1 ] = 0f
     }
 
-    // Perform FFT
+    //Perform FFT
     fft.realForward(fftArray)
-
     println("FFT Data After Transform: ${fftArray.contentToString()}")
 
-    //Get magnitudes and find peak frequency
+    return fftArray
+}
+
+// Get Index of max magnitude
+fun getPeakIndex(data: FloatArray, n: Int): Int {
+    //Get magnitudes
     var maxMagnitude = 0f
     var peakIndex = 0
 
     for (i in 1 until n / 2) { // Only consider positive frequencies
-        val real = fftArray[2 * i]
-        val imaginary = fftArray[2 * i + 1]
+        val real = data[2 * i]
+        val imaginary = data[2 * i + 1]
         val magnitude = sqrt(real.pow(2) + imaginary.pow(2))
 
         if (magnitude > maxMagnitude) {
@@ -76,28 +80,33 @@ fun calculateFft(verticalAcceleration: List<Float>, samplingRate: Float): Float 
             peakIndex = i
         }
     }
-    // Convert index to frequency
-    return peakIndex * samplingRate / n
-}
-
-// TODO Unsure if needed, possibly for direction
-fun getPeakAcceleration(acceleration: List<Float>): Float {
-    return acceleration.maxOrNull() ?: 0f
+    return peakIndex
 }
 
 //TODO
 // Direction calculation
-// Temporary solution finding angle of dominant motion
-fun calculateWaveDirection(acceleration: List<Array<Float>>): Float {
-    val ax = mutableListOf<Float>()
-    val ay = mutableListOf<Float>()
-    //separate out x and y values
-    for (i in acceleration.indices){
-        ax.add(acceleration[i][0])
-        ay.add(acceleration[i][1])
+// Temporary solution using horizontal acceleration
+fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
+    if (accelX.isEmpty() || accelY.isEmpty()) {
+        println("Warning: data is empty!")
+        return 0f
     }
-    val avgX = ax.average().toFloat()
-    val avgY = ay.average().toFloat()
+    val n = accelX.size
+    val fftX = getFft(accelX, n)
+    val fftY = getFft(accelY, n)
 
-    return atan2(avgY, avgX) * (180 / Math.PI.toFloat())
+    val peakX = getPeakIndex(fftX, n)
+    val peakY = getPeakIndex(fftY, n)
+
+    // Get phase angles at the dominant frequency
+    val phaseX = atan2(fftX[2 * peakX + 1], fftX[2 * peakY])
+    val phaseY = atan2(fftY[2 * peakY + 1], fftY[2 * peakY])
+
+    val phaseDifference = phaseY - phaseX
+
+    // Compute wave direction in degrees
+    var waveDirection = Math.toDegrees(phaseDifference.toDouble()).toFloat()
+    if (waveDirection < 0) waveDirection += 360 // Normalize to 0-360°
+
+    return waveDirection
 }

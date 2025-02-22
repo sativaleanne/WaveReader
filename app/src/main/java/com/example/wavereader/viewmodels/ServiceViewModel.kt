@@ -35,7 +35,9 @@ class ServiceViewModel(
 
     private fun awaitLocationUpdates() {
         locationViewModel.coordinatesState.observeForever { (lat, lon) ->
-            fetchWaveData(lat, lon)
+            if(locationViewModel.zipCode.isNotEmpty()) {
+                fetchWaveData(lat, lon)
+            }
         }
     }
 

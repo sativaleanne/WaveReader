@@ -2,6 +2,7 @@ package com.example.wavereader.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -153,7 +154,13 @@ fun SearchResultScreen(
                 Text("Wave Height: ${it.current.waveHeight} feet")
                 Text("Wave Period: ${it.current.wavePeriod} seconds")
                 Text("Wave Direction: ${it.current.waveDirection} degrees")
-                DrawServiceGraph(it.hourly)
+                Box(
+                    modifier = Modifier
+                        .height(300.dp)
+                        .fillMaxWidth()
+                ) {
+                    DrawServiceGraph(it.hourly)
+                }
             }
         }
     }
