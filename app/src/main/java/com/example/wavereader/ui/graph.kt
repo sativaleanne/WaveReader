@@ -22,11 +22,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
@@ -108,6 +109,7 @@ fun Graph(
     Box(
         modifier = Modifier
             .height(300.dp)
+            .clip(RectangleShape)
             .background(Color.White)
             .padding(horizontal = 8.dp, vertical = 12.dp)
             .pointerInput(Unit) {
@@ -196,12 +198,11 @@ fun Graph(
                     waveDirection.maxOrNull() ?: 1f
                 )
 
-                drawGraphBorders()
                 drawGridLines()
-                drawYAxisLabels(maxValues)
-                drawXAxisLabels(timeLabels)
-                plotWaveLines(waveHeight, wavePeriod, waveDirection, maxValues, selectedIndex)
-                drawSelectionIndicator(selectedIndex, timeLabels.size)
+                drawYLabels(maxValues)
+                drawXLabels(timeLabels)
+                plotLines(waveHeight, wavePeriod, waveDirection, maxValues, selectedIndex)
+                drawCoordinate(selectedIndex, timeLabels.size)
             }
         )
 
@@ -211,38 +212,29 @@ fun Graph(
     }
 }
 
-/**
- * Draws the graph borders.
- */
-private fun DrawScope.drawGraphBorders() {
-    drawRect(Color.Black, style = Stroke(0.5.dp.toPx()))
-}
-
-/**
- * Draws horizontal grid lines.
- */
+// draw horizontal lines
 private fun DrawScope.drawGridLines() {
-    val gridLines = 6
-    val yStep = size.height / (gridLines + 1)
+    val gridLines = 8
+    val yStep = size.height / (gridLines)
     val barWidthPx = 0.5.dp.toPx()
 
+    drawLine(Color.Gray, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = barWidthPx)
     repeat(gridLines) { i ->
         val y = yStep * (i + 1)
         drawLine(Color.Gray, Offset(0f, y), Offset(size.width, y), strokeWidth = barWidthPx)
     }
+
 }
 
-/**
- * Draws the Y-axis labels for height, period, and direction.
- */
-private fun DrawScope.drawYAxisLabels(maxValues: List<Float>) {
+// Draw Labels on X axis
+private fun DrawScope.drawYLabels(maxValues: List<Float>) {
     val labels = listOf("ft", "s", "°")
     val positions = listOf(size.width - 160f, size.width - 100f, size.width - 40f)
-    val yStep = size.height / 7
-    val labelPadding = 6.dp.toPx()
+    val yStep = size.height / 8
+    val labelPadding = 2.dp.toPx()
 
-    for (i in 0..6) {
-        val y = size.height - (i * yStep)
+    for (i in 0..7) {
+        val y = size.height - (yStep * i)
         maxValues.forEachIndexed { index, maxVal ->
             drawContext.canvas.nativeCanvas.drawText(
                 String.format("%.1f", (maxVal / 6 * i).toDouble()) + labels[index],
@@ -254,12 +246,10 @@ private fun DrawScope.drawYAxisLabels(maxValues: List<Float>) {
     }
 }
 
-/**
- * Draws X-axis labels.
- */
-private fun DrawScope.drawXAxisLabels(timeLabels: List<String>) {
+// Create X axis Labels
+private fun DrawScope.drawXLabels(timeLabels: List<String>) {
     val xStep = size.width / (timeLabels.size).coerceAtLeast(1)
-    val labelPadding = 16.dp.toPx()
+    val labelPadding = 12.dp.toPx()
 
     timeLabels.forEachIndexed { index, label ->
         if (index % 2 == 0) {
@@ -276,10 +266,8 @@ private fun DrawScope.drawXAxisLabels(timeLabels: List<String>) {
     }
 }
 
-/**
- * Plots Wave Lines
- */
-private fun DrawScope.plotWaveLines(
+// Plot the data Points
+private fun DrawScope.plotLines(
     waveHeight: List<Float>,
     wavePeriod: List<Float>,
     waveDirection: List<Float>,
@@ -319,19 +307,15 @@ private fun DrawScope.plotWaveLines(
     }
 }
 
-/**
- * Draws the selection indicator when a point is tapped.
- */
-private fun DrawScope.drawSelectionIndicator(selectedIndex: Int, totalLabels: Int) {
+// Highlight selected index coordinates
+private fun DrawScope.drawCoordinate(selectedIndex: Int, totalLabels: Int) {
     if (selectedIndex != -1) {
         val selectedX = selectedIndex * (size.width / totalLabels)
         drawLine(Color.Red, Offset(selectedX, 0f), Offset(selectedX, size.height), strokeWidth = 2f)
     }
 }
 
-/**
- * Displays a coordinate key with selected data.
- */
+// Create Key for selected coordinates
 @Composable
 private fun DrawCoordinateKey(
     selectedIndex: Int,
@@ -342,7 +326,6 @@ private fun DrawCoordinateKey(
 ) {
     Column(
         modifier = Modifier
-            //.align(Alignment.TopCenter)
             .background(Color.White, RoundedCornerShape(8.dp))
             .padding(8.dp)
     ) {
@@ -357,6 +340,5 @@ private fun DrawCoordinateKey(
 @Composable
 fun PreviewDrawGraph(
 ){
-    //WavePeriodGraph(fakeWaveData)
     DrawServiceGraph(fakeWaveData)
 }
