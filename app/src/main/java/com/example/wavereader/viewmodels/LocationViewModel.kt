@@ -17,16 +17,17 @@ import kotlinx.coroutines.launch
 
 class LocationViewModel(private val zipApiRepository: ZipApiRepository) : ViewModel() {
 
-    private val _coordinatesState = MutableLiveData(Pair(0.0, 0.0))
+    private val _coordinatesState: MutableLiveData<Pair<Double, Double>> by lazy {
+        MutableLiveData<Pair<Double, Double>>()
+    }
     val coordinatesState: LiveData<Pair<Double, Double>> = _coordinatesState
 
     var zipCode by mutableStateOf("")
         private set
 
-    val zipRegex = Regex("^[0-9]{5}(?:-[0-9]{4})?\$")
+    private val zipRegex = Regex("^[0-9]{5}(?:-[0-9]{4})?\$")
 
-    var locationError: Boolean by mutableStateOf(false)
-        private set
+    private var locationError: Boolean by mutableStateOf(false)
 
     val zipCodeHasErrors by derivedStateOf {
         if(zipCode.isNotEmpty()) {
@@ -40,7 +41,7 @@ class LocationViewModel(private val zipApiRepository: ZipApiRepository) : ViewMo
         zipCode = input
     }
 
-    fun updateCoordinates(lat: Double, lon: Double) {
+    private fun updateCoordinates(lat: Double, lon: Double) {
         _coordinatesState.postValue(Pair(lat, lon))
     }
 

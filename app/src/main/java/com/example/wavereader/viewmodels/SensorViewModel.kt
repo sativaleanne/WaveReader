@@ -180,7 +180,6 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         private fun processData() {
 
                 if (verticalAcceleration.size < 50 || horizontalAcceleration.size < 50) return
-                //if ((verticalAcceleration.isEmpty()) or (accelerationData.isEmpty())) return
 
                 val elapsedTime = (SystemClock.elapsedRealtime() - startTime) / 1000f
 

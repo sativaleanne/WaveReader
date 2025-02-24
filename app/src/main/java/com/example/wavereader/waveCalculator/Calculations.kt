@@ -45,7 +45,7 @@ fun calculateWavePeriod(verticalAcceleration: List<Float>, samplingRate: Float):
 }
 
 // Calculate FFT
-// Use Fast Fourier Transform to transform from temporal domain to frequency domain
+// Use JTransforms Fast Fourier Transform to transform from temporal domain to frequency domain
 fun getFft(data: List<Float>, n: Int): FloatArray {
 
     val fft = FloatFFT_1D(n.toLong())

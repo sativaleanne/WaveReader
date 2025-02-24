@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -43,7 +44,7 @@ fun SearchDataScreen(
 ) {
     val serviceViewModel : ServiceViewModel = viewModel(factory = ServiceViewModel.Factory)
     // Collect coordinates from LocationViewModel
-    val coordinates by locationViewModel.coordinatesState.observeAsState(Pair(0.0, 0.0))
+    val coordinates by locationViewModel.coordinatesState.observeAsState()
 
     Column(
         modifier = Modifier
@@ -54,18 +55,31 @@ fun SearchDataScreen(
         horizontalAlignment = Alignment.CenterHorizontally
 
     ) {
+        // Show latitude and longitude if available
+        if (coordinates?.first != null && coordinates?.second  != null) {
+            Text(
+                stringResource(
+                    R.string.latitude_longitude,
+                    coordinates!!.first,
+                    coordinates!!.second
+                )
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
         ShowSearchData(serviceUiState = serviceViewModel.serviceUiState)
         Spacer(modifier = Modifier.height(16.dp))
         UserSearchField(locationViewModel)
 
-
-        // Show latitude and longitude if available
-        if (coordinates.first != 0.0 && coordinates.second != 0.0) {
-            Text(stringResource(R.string.latitude_longitude, coordinates.first, coordinates.second))
-            Spacer(modifier = Modifier.height(16.dp))
-
+        // REMOVE AFTER DEBUGGING
+        if (coordinates?.first != null && coordinates?.second  != null) {
             // Button to Fetch Wave Data using Lat/Lon
-            Button(onClick = { serviceViewModel.fetchWaveData(coordinates.first, coordinates.second) }) {
+            Button(onClick = {
+                serviceViewModel.fetchWaveData(
+                    coordinates!!.first,
+                    coordinates!!.second
+                )
+            }) {
                 Text(stringResource(R.string.fetch_wave_data_button))
             }
         }
@@ -150,6 +164,11 @@ fun SearchResultScreen(
         verticalArrangement = Arrangement.SpaceAround
     ) {
         waveData.let {
+            if(it.current.waveHeight == null){
+                Text(text = "There is no wave data at this location!",
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Column {
                 Text("Wave Height: ${it.current.waveHeight} feet")
                 Text("Wave Period: ${it.current.wavePeriod} seconds")
@@ -174,4 +193,5 @@ fun LoadingScreen(modifier: Modifier = Modifier) {
         contentDescription = stringResource(R.string.loading_image_descr)
     )
 }
+
 
