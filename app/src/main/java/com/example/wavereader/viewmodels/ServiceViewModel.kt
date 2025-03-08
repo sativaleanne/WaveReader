@@ -30,12 +30,13 @@ class ServiceViewModel(
         private set
 
     init {
-        awaitLocationUpdates()
+        observeLocationUpdates()
     }
 
-    private fun awaitLocationUpdates() {
-        locationViewModel.coordinatesState.observeForever { (lat, lon) ->
-            if(locationViewModel.zipCode.isNotEmpty()) {
+    private fun observeLocationUpdates() {
+        locationViewModel.coordinatesState.observeForever { coordinates ->
+            val (lat, lon) = coordinates
+            if (locationViewModel.zipCode.isNotEmpty()) {
                 fetchWaveData(lat, lon)
             }
         }
@@ -47,10 +48,7 @@ class ServiceViewModel(
             serviceUiState = ServiceUiState.Loading
             serviceUiState = try {
                 val dataResult = waveApiRepository.getWaveApiData(lat, long)
-                println(dataResult)
-                ServiceUiState.Success(
-                    waveData = dataResult
-                )
+                ServiceUiState.Success(waveData = dataResult)
             } catch (e: IOException) {
                 ServiceUiState.Error
             } catch (e: HttpException) {

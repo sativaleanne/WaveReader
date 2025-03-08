@@ -17,13 +17,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -46,6 +52,15 @@ fun SearchDataScreen(
     // Collect coordinates from LocationViewModel
     val coordinates by locationViewModel.coordinatesState.observeAsState()
 
+    // Trigger data fetch when coordinates change:
+    LaunchedEffect(coordinates, locationViewModel.zipCode) {
+        coordinates?.let { (lat, lon) ->
+            if (locationViewModel.zipCode.isNotEmpty()) {
+                serviceViewModel.fetchWaveData(lat, lon)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .padding(16.dp)
@@ -64,27 +79,15 @@ fun SearchDataScreen(
                     coordinates!!.second
                 )
             )
+
             Spacer(modifier = Modifier.height(16.dp))
         }
-
-        ShowSearchData(serviceUiState = serviceViewModel.serviceUiState)
-        Spacer(modifier = Modifier.height(16.dp))
         UserSearchField(locationViewModel)
-
-        // REMOVE AFTER DEBUGGING
-        if (coordinates?.first != null && coordinates?.second  != null) {
-            // Button to Fetch Wave Data using Lat/Lon
-            Button(onClick = {
-                serviceViewModel.fetchWaveData(
-                    coordinates!!.first,
-                    coordinates!!.second
-                )
-            }) {
-                Text(stringResource(R.string.fetch_wave_data_button))
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
+        ShowSearchData(serviceViewModel.serviceUiState)
     }
 }
+
 
 @Composable
 fun UserSearchField(
@@ -178,7 +181,12 @@ fun SearchResultScreen(
                         .height(300.dp)
                         .fillMaxWidth()
                 ) {
-                    DrawServiceGraph(it.hourly)
+                    if (it.hourly.time.isEmpty()) {
+                        // Show a loading indicator or placeholder for the graph area
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    } else {
+                        DrawServiceGraph(it.hourly)
+                    }
                 }
             }
         }
