@@ -32,9 +32,9 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         // Get reference to the sensor service
         private val sensorManager = getApplication<Application>().getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-        private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        private val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-        private val magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        private var accelerometer: Sensor? = null
+        private var gyroscope: Sensor? = null
+        private var magnetometer: Sensor? = null
 
         // Previous timestamp
         private var lastTimestamp: Long = 0L
@@ -44,6 +44,8 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         private val horizontalAcceleration = mutableListOf<Array<Float>>()
         private val verticalAcceleration = mutableListOf<Float>()
+        private var gyroscopetilt = 0f
+        private var filteredWaveDirection: Float = 0f
 
         private val accelerometerReading = FloatArray(3)
         private val magnetometerReading = FloatArray(3)
@@ -89,7 +91,18 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 }
                 verticalAcceleration.clear()
                 horizontalAcceleration.clear()
+                gyroscopetilt = 0f
                 lastTimestamp = 0L
+        }
+
+        fun checkSensors(): Boolean {
+                if (sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null && sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null && sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null){
+                        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+                        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+                        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+                        return true
+                }
+                return false
         }
 
         fun startSensors() {
@@ -123,7 +136,12 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                                 System.arraycopy(event.values, 0, accelerometerReading, 0, accelerometerReading.size)
                         }
                         Sensor.TYPE_GYROSCOPE -> {
-                                //TODO
+                                val gyroscopeDt = if (lastTimestamp != 0L) (event.timestamp - lastTimestamp) / 1_000_000_000f else 0f
+                                val gyroscropeZ = event.values[2]
+                                val integratedAngle = filteredWaveDirection + Math.toDegrees(gyroscropeZ * gyroscopeDt.toDouble()).toFloat()
+                                val senserHeading = getMagneticHeading()
+
+                                filteredWaveDirection = alpha * integratedAngle + (1 - alpha) * senserHeading
                         }
                         Sensor.TYPE_MAGNETIC_FIELD -> {
                                 System.arraycopy(event.values, 0, magnetometerReading, 0, magnetometerReading.size)
@@ -185,13 +203,12 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
                 val waveHeight = calculateWaveHeight(verticalAcceleration, dt)
                 val wavePeriod = calculateWavePeriod(verticalAcceleration, samplingRate)
+                var waveDirection = filteredWaveDirection
 
-                val accelX = horizontalAcceleration.map{ it[0] }
+                val accelX = horizontalAcceleration.map { it[0] }
                 val accelY = horizontalAcceleration.map { it[1] }
-                var waveDirection = calculateWaveDirection(accelX, accelY)
-
-                // Align with magnetic north
-                waveDirection = (waveDirection + getMagneticHeading()) % 360
+                val fftDirection = calculateWaveDirection(accelX, accelY)
+                waveDirection = (waveDirection + fftDirection) / 2f
 
                 println("Wave Height: $waveHeight")
                 println("Wave Period: $wavePeriod")

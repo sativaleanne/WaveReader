@@ -35,13 +35,32 @@ fun RecordDataScreen(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        ShowRecordData(uiState = uiState)
-        Spacer(modifier = Modifier)
-        // Toggle Button
-        SensorButton(viewModel)
-        if(uiState.measuredWaveList.isNotEmpty()) {
-            ClearButton(viewModel)
+        if(viewModel.checkSensors()) {
+            ShowRecordData(uiState = uiState)
+            Spacer(modifier = Modifier)
+            // Toggle Button
+            SensorButton(viewModel)
+            if(uiState.measuredWaveList.isNotEmpty()) {
+                ClearButton(viewModel)
+            }
         }
+        else {
+            ShowSensorErrorScreen()
+        }
+
+    }
+}
+
+@Composable
+fun ShowSensorErrorScreen() {
+    Column(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Unable to use this feature due to missing sensors!"
+        )
     }
 }
 
@@ -56,10 +75,8 @@ fun SensorButton(
         onClick = {
             isSensorActive = !isSensorActive
             if (isSensorActive) {
-                //viewModel.startFakeWaveData()
                 viewModel.startSensors()
             } else {
-                //viewModel.stopFakeWaveData()
                 viewModel.stopSensors()
             }
         },
@@ -81,7 +98,6 @@ fun ClearButton(
         shape = RoundedCornerShape(9.dp),
         onClick = {
             if (viewModel.uiState.value.measuredWaveList.isNotEmpty()) {
-                //viewModel.startFakeWaveData()
                 viewModel.clearMeasuredWaveData()
             }
         },
@@ -100,10 +116,11 @@ fun ShowRecordData(
             .padding(16.dp),
     ) {
         uiState.let {
-            Column {
-                Text("Wave Height: ${it.height} feet")
-                Text("Wave Period: ${it.period} seconds")
-                Text("Wave Direction: ${it.direction} degrees")
+            Column(modifier = Modifier,
+                horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Wave Height: ${it.height?: 0f} feet")
+                Text("Wave Period: ${it.period?: 0f} seconds")
+                Text("Wave Direction: ${it.direction?: 0f} degrees")
                 Box(
                     modifier = Modifier
                         .height(300.dp)

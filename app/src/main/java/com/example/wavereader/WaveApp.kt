@@ -15,19 +15,24 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -63,31 +68,33 @@ fun WaveApp(viewModel: SensorViewModel) {
     val uiState by viewModel.uiState.collectAsState()
 
     val tabs = listOf(Screen.Record, Screen.Search)
-    val selectedTabIndex = rememberSaveable { mutableStateOf(tabs.indexOf(currentScreen)) }
+    val selectedTabIndex = rememberSaveable { mutableIntStateOf(tabs.indexOf(currentScreen)) }
 
     val showInfoCard = remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             Column {
-                TopAppBar(
-                    title = { Text(stringResource(R.string.titlename)) },
+                CenterAlignedTopAppBar(
+                    title = { Text(
+                        text = stringResource(R.string.titlename)
+                    ) },
                     actions = {
                         IconButton(onClick = { showInfoCard.value = true }) {
                             Icon(Icons.Default.Info, contentDescription = stringResource(R.string.informationbuttondescr))
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
                 )
                 TabRow(
-                    selectedTabIndex = selectedTabIndex.value,
+                    selectedTabIndex = selectedTabIndex.intValue,
                     modifier = Modifier.fillMaxWidth(),
-                    contentColor = Color.White
                 ) {
                     tabs.forEachIndexed { index, screen ->
                         Tab(
-                            selected = selectedTabIndex.value == index,
+                            selected = selectedTabIndex.intValue == index,
                             onClick = {
-                                selectedTabIndex.value = index
+                                selectedTabIndex.intValue = index
                                 navController.navigate(screen.name)
                             },
                             text = { Text(screen.name) },
@@ -148,6 +155,54 @@ fun ShowInfoDialog(showInfoCard: MutableState<Boolean>) {
                 )
                 Text(
                     text = stringResource(R.string.info_sensor_body),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = stringResource(R.string.calculating_wave_height_title),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline
+                )
+                Text(
+                    text = stringResource(R.string.calculating_wave_height_body),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = stringResource(R.string.calculating_wave_period_title),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline
+                )
+                Text(
+                    text = stringResource(R.string.calculating_wave_period_body),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = stringResource(R.string.calculating_wave_direction_title),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .wrapContentSize(Alignment.Center),
+                    textAlign = TextAlign.Center,
+                    fontWeight = FontWeight.Bold,
+                    textDecoration = TextDecoration.Underline
+                )
+                Text(
+                    text = stringResource(R.string.calculating_wave_direction_body),
                     modifier = Modifier
                         .fillMaxSize()
                         .wrapContentSize(Alignment.Center),

@@ -99,7 +99,7 @@ fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
     val peakY = getPeakIndex(fftY, n)
 
     // Get phase angles at the dominant frequency
-    val phaseX = atan2(fftX[2 * peakX + 1], fftX[2 * peakY])
+    val phaseX = atan2(fftX[2 * peakX + 1], fftX[2 * peakX])
     val phaseY = atan2(fftY[2 * peakY + 1], fftY[2 * peakY])
 
     val phaseDifference = phaseY - phaseX

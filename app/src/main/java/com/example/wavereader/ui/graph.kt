@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -23,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -37,10 +39,8 @@ import androidx.compose.ui.unit.sp
 import com.example.wavereader.model.Hourly
 import com.example.wavereader.model.MeasuredWaveData
 import com.example.wavereader.testData.fakeWaveData
-import com.example.wavereader.ui.theme.customColor2Light
-import com.example.wavereader.ui.theme.customColor4Light
-import com.example.wavereader.ui.theme.customColor5Dark
 import java.time.LocalDateTime
+import androidx.compose.ui.platform.LocalDensity
 
 
 @Composable
@@ -64,7 +64,7 @@ fun DrawSensorGraph(waveData: List<MeasuredWaveData>) {
     val timeLabels = mutableListOf<String>()
     val timeValues = mutableListOf<Float>()
 
-    waveData.forEach { data ->
+    getLastTwenty(waveData).forEach { data ->
         waveHeight += data.waveHeight
         wavePeriod += data.wavePeriod
         waveDirection += data.waveDirection
@@ -80,6 +80,13 @@ fun DrawSensorGraph(waveData: List<MeasuredWaveData>) {
     }
 
     Graph(waveHeight, wavePeriod, waveDirection, timeLabels)
+}
+
+fun getLastTwenty(data: List<MeasuredWaveData>): List<MeasuredWaveData>{
+    return if (data.size > 20){
+        data.takeLast(20)
+    } else
+        data
 }
 
 // Formats API time data from ISO to hour.
@@ -205,10 +212,9 @@ fun Graph(
                 drawCoordinate(selectedIndex, timeLabels.size)
             }
         )
-
-        selectedIndex.takeIf { it != -1 }?.let {
-            DrawCoordinateKey(selectedIndex, waveHeight, wavePeriod, waveDirection, timeLabels)
-        }
+    }
+    selectedIndex.takeIf { it != -1 }?.let {
+        DrawCoordinateKey(selectedIndex, waveHeight, wavePeriod, waveDirection, timeLabels)
     }
 }
 
@@ -276,7 +282,7 @@ private fun DrawScope.plotLines(
 ) {
     val xStep = size.width / (waveHeight.size).coerceAtLeast(1)
     val graphHeight = size.height
-    val colors = listOf(customColor5Dark, customColor4Light, customColor2Light)
+    val colors = listOf(Color.Blue, Color.Cyan, Color.Green)
     val dataSets = listOf(waveHeight, wavePeriod, waveDirection)
 
     // Draw Lines
@@ -322,17 +328,25 @@ private fun DrawCoordinateKey(
     waveHeight: List<Float>,
     wavePeriod: List<Float>,
     waveDirection: List<Float>,
-    timeLabels: List<String>
+    timeLabels: List<String>,
 ) {
-    Column(
+    Box(
         modifier = Modifier
-            .background(Color.White, RoundedCornerShape(8.dp))
-            .padding(8.dp)
+            .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+            .padding(6.dp)
+            .shadow(1.dp)
     ) {
-        Text("Time: ${timeLabels[selectedIndex]}")
-        Text("Height: ${waveHeight.getOrNull(selectedIndex) ?: "-"} ft", color = customColor5Dark)
-        Text("Period: ${wavePeriod.getOrNull(selectedIndex) ?: "-"} s", color = customColor4Light)
-        Text("Direction: ${waveDirection.getOrNull(selectedIndex) ?: "-"}°", color = customColor2Light)
+        Column( horizontalAlignment = Alignment.Start )
+        {
+            Text("Time: ${timeLabels[selectedIndex]}", fontSize = 12.sp)
+            Text("Height: ${waveHeight.getOrNull(selectedIndex) ?: "-"} ft", color = Color.Blue, fontSize = 12.sp)
+            Text("Period: ${wavePeriod.getOrNull(selectedIndex) ?: "-"} s", color = Color.Cyan, fontSize = 12.sp)
+            Text(
+                "Direction: ${waveDirection.getOrNull(selectedIndex) ?: "-"}°",
+                color = Color.Green,
+                fontSize = 12.sp
+            )
+        }
     }
 }
 
