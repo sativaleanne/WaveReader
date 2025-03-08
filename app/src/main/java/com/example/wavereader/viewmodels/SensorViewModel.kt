@@ -8,15 +8,20 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.SystemClock
 import androidx.lifecycle.AndroidViewModel
+import com.example.wavereader.data.RecordSessionRepository
 import com.example.wavereader.model.MeasuredWaveData
-import com.example.wavereader.waveCalculator.calculateWaveDirection
-import com.example.wavereader.waveCalculator.calculateWaveHeight
-import com.example.wavereader.waveCalculator.calculateWavePeriod
+import com.example.wavereader.utils.calculateWaveDirection
+import com.example.wavereader.utils.calculateWaveHeight
+import com.example.wavereader.utils.calculateWavePeriod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
+/*
+* Sensor View Model for control the sensor manager and processing data
+* ToDO: Decide how to best send data to firestore with location
+ */
 data class WaveUiState(
         val measuredWaveList: List<MeasuredWaveData> = emptyList(),
         val height: Float? = null,
@@ -29,12 +34,14 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         private val _uiState = MutableStateFlow(WaveUiState())
         val uiState: StateFlow<WaveUiState> = _uiState.asStateFlow()
 
+        private val recordSessionRepository = RecordSessionRepository()
+
         // Get reference to the sensor service
         private val sensorManager = getApplication<Application>().getSystemService(Context.SENSOR_SERVICE) as SensorManager
 
-        private val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        private val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
-        private val magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        private var accelerometer: Sensor? = null
+        private var gyroscope: Sensor? = null
+        private var magnetometer: Sensor? = null
 
         // Previous timestamp
         private var lastTimestamp: Long = 0L
@@ -44,6 +51,8 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         private val horizontalAcceleration = mutableListOf<Array<Float>>()
         private val verticalAcceleration = mutableListOf<Float>()
+        private var gyroscopetilt = 0f
+        private var filteredWaveDirection: Float = 0f
 
         private val accelerometerReading = FloatArray(3)
         private val magnetometerReading = FloatArray(3)
@@ -58,6 +67,9 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         private var startTime: Long = 0
         private var startDataBufferTime: Long = 0
         private var dataProcessTime: Long = 0
+
+        private var currentLocationName: String = "Unknown location"
+        private var currentLatLng: Pair<Double, Double>? = null
 
 
         private fun updateMeasuredWaveData(height: Float, period: Float, direction: Float, time: Float) {
@@ -75,6 +87,11 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 }
         }
 
+        fun setCurrentLocation(name: String, latLng: Pair<Double, Double>?) {
+                currentLocationName = name
+                currentLatLng = latLng
+        }
+
         fun clearMeasuredWaveData() {
                 _uiState.update { currentState ->
                         val updatedList = currentState.measuredWaveList.toMutableList().apply {
@@ -89,7 +106,18 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 }
                 verticalAcceleration.clear()
                 horizontalAcceleration.clear()
+                gyroscopetilt = 0f
                 lastTimestamp = 0L
+        }
+
+        fun checkSensors(): Boolean {
+                if (sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null && sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null && sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null){
+                        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+                        gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+                        magnetometer = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+                        return true
+                }
+                return false
         }
 
         fun startSensors() {
@@ -123,7 +151,12 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                                 System.arraycopy(event.values, 0, accelerometerReading, 0, accelerometerReading.size)
                         }
                         Sensor.TYPE_GYROSCOPE -> {
-                                //TODO
+                                val gyroscopeDt = if (lastTimestamp != 0L) (event.timestamp - lastTimestamp) / 1_000_000_000f else 0f
+                                val gyroscropeZ = event.values[2]
+                                val integratedAngle = filteredWaveDirection + Math.toDegrees(gyroscropeZ * gyroscopeDt.toDouble()).toFloat()
+                                val senserHeading = getMagneticHeading()
+
+                                filteredWaveDirection = alpha * integratedAngle + (1 - alpha) * senserHeading
                         }
                         Sensor.TYPE_MAGNETIC_FIELD -> {
                                 System.arraycopy(event.values, 0, magnetometerReading, 0, magnetometerReading.size)
@@ -185,19 +218,27 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
                 val waveHeight = calculateWaveHeight(verticalAcceleration, dt)
                 val wavePeriod = calculateWavePeriod(verticalAcceleration, samplingRate)
+                var waveDirection = filteredWaveDirection
 
-                val accelX = horizontalAcceleration.map{ it[0] }
+                val accelX = horizontalAcceleration.map { it[0] }
                 val accelY = horizontalAcceleration.map { it[1] }
-                var waveDirection = calculateWaveDirection(accelX, accelY)
-
-                // Align with magnetic north
-                waveDirection = (waveDirection + getMagneticHeading()) % 360
+                val fftDirection = calculateWaveDirection(accelX, accelY)
+                waveDirection = (waveDirection + fftDirection) / 2f
 
                 println("Wave Height: $waveHeight")
                 println("Wave Period: $wavePeriod")
                 println("Wave Direction: $waveDirection")
 
                 updateMeasuredWaveData(waveHeight, wavePeriod, waveDirection, elapsedTime)
+        }
 
+        fun saveToFirestore() {
+                recordSessionRepository.saveSession(
+                        measuredData = uiState.value.measuredWaveList,
+                        locationName = currentLocationName,
+                        latLng = currentLatLng,
+                        onSuccess = { println("Wave session saved successfully!") },
+                        onFailure = { e -> println("Error saving wave session: $e") }
+                )
         }
 }
