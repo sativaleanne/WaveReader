@@ -1,4 +1,4 @@
-package com.example.wavereader.waveCalculator
+package com.example.wavereader.utils
 
 import org.jtransforms.fft.FloatFFT_1D
 import kotlin.math.atan2
@@ -39,9 +39,18 @@ fun calculateWavePeriod(verticalAcceleration: List<Float>, samplingRate: Float):
         return 0f
     }
     val n = verticalAcceleration.size
-    val fft = getFft(verticalAcceleration, n)
+    val windowedData = applyHanningWindow(verticalAcceleration)
+    val fft = getFft(windowedData, n)
     val peakFrequency = getPeakIndex(fft, n) * samplingRate / n
     return if (peakFrequency > 0) 1 / peakFrequency else 0f
+}
+
+fun applyHanningWindow(data: List<Float>): List<Float> {
+    val n = data.size
+    return data.mapIndexed { i, value ->
+        val multiplier = 0.5f * (1 - kotlin.math.cos(2 * Math.PI * i / (n - 1))).toFloat()
+        value * multiplier
+    }
 }
 
 // Calculate FFT
@@ -92,14 +101,18 @@ fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
         return 0f
     }
     val n = accelX.size
-    val fftX = getFft(accelX, n)
-    val fftY = getFft(accelY, n)
+
+    val windowedX = applyHanningWindow(accelX)
+    val windowedY = applyHanningWindow(accelY)
+
+    val fftX = getFft(windowedX, n)
+    val fftY = getFft(windowedY, n)
 
     val peakX = getPeakIndex(fftX, n)
     val peakY = getPeakIndex(fftY, n)
 
     // Get phase angles at the dominant frequency
-    val phaseX = atan2(fftX[2 * peakX + 1], fftX[2 * peakY])
+    val phaseX = atan2(fftX[2 * peakX + 1], fftX[2 * peakX])
     val phaseY = atan2(fftY[2 * peakY + 1], fftY[2 * peakY])
 
     val phaseDifference = phaseY - phaseX

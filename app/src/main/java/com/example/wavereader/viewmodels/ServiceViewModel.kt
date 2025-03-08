@@ -16,45 +16,30 @@ import kotlinx.coroutines.launch
 import retrofit2.HttpException
 import java.io.IOException
 
-sealed interface ServiceUiState {
-    data class Success(val waveData: WaveDataResponse) : ServiceUiState
-    object Error : ServiceUiState
-    object Loading : ServiceUiState
-}
-
+/*
+* Service View Model for controlling the api calls.
+* TODO: Add filters to getWaveApidata
+ */
 class ServiceViewModel(
-    private val waveApiRepository: WaveApiRepository,
-    private val locationViewModel: LocationViewModel
+    private val waveApiRepository: WaveApiRepository
 ) : ViewModel() {
-    var serviceUiState: ServiceUiState by mutableStateOf(ServiceUiState.Loading)
+    var serviceUiState: UiState<WaveDataResponse> by mutableStateOf(UiState.Loading)
         private set
 
-    init {
-        awaitLocationUpdates()
+    fun fetchWaveData(coordinates: Pair<Double, Double>) {
+        fetchWaveData(coordinates.first, coordinates.second)
     }
-
-    private fun awaitLocationUpdates() {
-        locationViewModel.coordinatesState.observeForever { (lat, lon) ->
-            if(locationViewModel.zipCode.isNotEmpty()) {
-                fetchWaveData(lat, lon)
-            }
-        }
-    }
-
 
     fun fetchWaveData(lat: Double, long: Double) {
         viewModelScope.launch {
-            serviceUiState = ServiceUiState.Loading
+            serviceUiState = UiState.Loading
             serviceUiState = try {
                 val dataResult = waveApiRepository.getWaveApiData(lat, long)
-                println(dataResult)
-                ServiceUiState.Success(
-                    waveData = dataResult
-                )
+                UiState.Success(dataResult)
             } catch (e: IOException) {
-                ServiceUiState.Error
+                UiState.Error("Network error")
             } catch (e: HttpException) {
-                ServiceUiState.Error
+                UiState.Error("Server error")
             }
         }
     }
@@ -65,7 +50,7 @@ class ServiceViewModel(
                 val application = (this[APPLICATION_KEY] as WaveReaderApplication)
                 val waveApiRepository = application.container.waveApiRepository
                 val locationViewModel = application.container.locationViewModel
-                ServiceViewModel(waveApiRepository, locationViewModel)
+                ServiceViewModel(waveApiRepository)
             }
         }
     }

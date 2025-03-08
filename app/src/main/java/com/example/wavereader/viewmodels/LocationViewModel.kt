@@ -1,6 +1,8 @@
 package com.example.wavereader.viewmodels
 
-import androidx.compose.runtime.derivedStateOf
+import android.content.Context
+import android.location.Address
+import android.location.Geocoder
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -8,64 +10,167 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.example.wavereader.WaveReaderApplication
-import com.example.wavereader.data.ZipApiRepository
-import kotlinx.coroutines.launch
+import com.google.android.gms.location.FusedLocationProviderClient
+import java.util.Locale
 
-class LocationViewModel(private val zipApiRepository: ZipApiRepository) : ViewModel() {
 
-    private val _coordinatesState: MutableLiveData<Pair<Double, Double>> by lazy {
-        MutableLiveData<Pair<Double, Double>>()
-    }
+class LocationViewModel : ViewModel() {
+
+    private val _coordinatesState = MutableLiveData<Pair<Double, Double>>()
     val coordinatesState: LiveData<Pair<Double, Double>> = _coordinatesState
 
-    var zipCode by mutableStateOf("")
+    var locationError by mutableStateOf(false)
         private set
 
-    private val zipRegex = Regex("^[0-9]{5}(?:-[0-9]{4})?\$")
+    var displayLocationText by mutableStateOf("No location selected")
+        private set
 
-    private var locationError: Boolean by mutableStateOf(false)
+    private var geocoder: Geocoder? = null
 
-    val zipCodeHasErrors by derivedStateOf {
-        if(zipCode.isNotEmpty()) {
-            !zipRegex.matches(zipCode)
-        } else {
-            false
+    private fun getGeocoder(context: Context): Geocoder {
+        if (geocoder == null) {
+            geocoder = Geocoder(context, Locale.getDefault())
+        }
+        return geocoder!!
+    }
+
+    // Map interaction
+    fun setLocationText(lat: Double, lon: Double) {
+        updateCoordinates(lat, lon)
+        displayLocationText = formatLatLong(lat, lon)
+    }
+
+    // User Location
+    fun fetchUserLocation(context: Context, fusedLocationClient: FusedLocationProviderClient) {
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                location?.let {
+                    val lat = it.latitude
+                    val lon = it.longitude
+                    updateCoordinates(lat, lon)
+                    reverseGeocode(context, lat, lon)
+                }
+            }
+        } catch (e: SecurityException) {
+            locationError = true
+            e.printStackTrace()
         }
     }
 
-    fun updateZipCode(input: String) {
-        zipCode = input
+    fun selectLocation(placeName: String, context: Context) {
+        val geocoder = getGeocoder(context)
+        geocoder.getFromLocationName(
+            placeName,
+            1,
+            object : Geocoder.GeocodeListener {
+                override fun onGeocode(addresses: MutableList<Address>) {
+                    handleGeocodeResult(addresses, fallback = {
+                        locationError = true
+                    })
+                }
+
+                override fun onError(errorMessage: String?) {
+                    locationError = true
+                }
+            }
+        )
     }
 
-    private fun updateCoordinates(lat: Double, lon: Double) {
+    fun fetchLocationAndSave(
+        context: Context,
+        fusedLocationClient: FusedLocationProviderClient,
+        viewModel: SensorViewModel,
+        onSavingStarted: () -> Unit = {},
+        onSavingFinished: () -> Unit = {},
+        onSaveSuccess: () -> Unit = {}
+    ) {
+        onSavingStarted()
+
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    val lat = location.latitude
+                    val lon = location.longitude
+                    updateCoordinates(lat, lon)
+                    viewModel.setCurrentLocation(formatLatLong(lat, lon), Pair(lat, lon))
+                } else {
+                    viewModel.setCurrentLocation("Unknown Location", null)
+                }
+
+                viewModel.saveToFirestore()
+                onSavingFinished()
+                onSaveSuccess()
+            }
+        } catch (e: SecurityException) {
+            onSavingFinished()
+            e.printStackTrace()
+        }
+    }
+
+    private fun reverseGeocode(context: Context, lat: Double, lon: Double) {
+        val geocoder = getGeocoder(context)
+        geocoder.getFromLocation(
+            lat,
+            lon,
+            1,
+            object : Geocoder.GeocodeListener {
+                override fun onGeocode(addresses: MutableList<Address>) {
+                    handleGeocodeResult(addresses, fallback = {
+                        displayLocationText = formatLatLong(lat, lon)
+                    })
+                }
+
+                override fun onError(errorMessage: String?) {
+                    displayLocationText = formatLatLong(lat, lon)
+                }
+            }
+        )
+    }
+
+    private fun handleGeocodeResult(
+        addresses: MutableList<Address>,
+        fallback: () -> Unit
+    ) {
+        val address = addresses.firstOrNull()
+        if (address != null) {
+            val lat = address.latitude
+            val lon = address.longitude
+            updateCoordinates(lat, lon)
+            displayLocationText = formatAddressOrCoordinates(address, lat, lon)
+        } else {
+            fallback()
+        }
+    }
+
+    fun updateCoordinates(lat: Double, lon: Double) {
         _coordinatesState.postValue(Pair(lat, lon))
     }
 
-    fun fetchCoordinates(zipCode: String) {
-        viewModelScope.launch {
-            try {
-                val response = zipApiRepository.getZipApiData(zipCode)
-                updateCoordinates(response.lat, response.lon)
-                locationError = false
-            } catch (e: Exception) {
-                locationError = true
-                e.printStackTrace()
-            }
-        }
+    private fun formatAddressOrCoordinates(address: Address?, lat: Double, lon: Double): String {
+        return address?.let {
+            listOfNotNull(it.locality, it.adminArea)
+                .takeIf { it.isNotEmpty() }
+                ?.joinToString(", ")
+        } ?: formatLatLong(lat, lon)
+    }
+
+    fun formatLatLong(lat: Double, lon: Double): String {
+        val latDir = if (lat >= 0) "N" else "S"
+        val lonDir = if (lon >= 0) "E" else "W"
+        return "%.4f°%s, %.4f°%s".format(
+            kotlin.math.abs(lat), latDir,
+            kotlin.math.abs(lon), lonDir
+        )
     }
 
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val application =
-                    this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as WaveReaderApplication
-                val zipApiRepository = application.container.zipApiRepository
-                LocationViewModel(zipApiRepository)
+                LocationViewModel()
             }
         }
     }
 }
+
