@@ -1,0 +1,358 @@
+package com.example.wavereader.ui
+
+import android.graphics.Paint
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.wavereader.model.Hourly
+import com.example.wavereader.model.MeasuredWaveData
+import com.example.wavereader.testData.fakeWaveData
+import java.time.LocalDateTime
+import androidx.compose.ui.platform.LocalDensity
+
+
+@Composable
+fun DrawServiceGraph(waveData: Hourly) {
+    val timeLabels = waveData.time.map { formatTime(it) }
+    Graph(
+        waveData.waveHeight.filterNotNull(),
+        waveData.wavePeriod.filterNotNull(),
+        waveData.waveDirection.filterNotNull(),
+        timeLabels
+    )
+}
+
+@Composable
+fun DrawSensorGraph(waveData: List<MeasuredWaveData>) {
+    if (waveData.isEmpty()) return
+
+    val waveHeight = mutableListOf<Float>()
+    val wavePeriod = mutableListOf<Float>()
+    val waveDirection = mutableListOf<Float>()
+    val timeLabels = mutableListOf<String>()
+    val timeValues = mutableListOf<Float>()
+
+    getLastTwenty(waveData).forEach { data ->
+        waveHeight += data.waveHeight
+        wavePeriod += data.wavePeriod
+        waveDirection += data.waveDirection
+        timeValues += data.time
+    }
+
+    val totalPoints = timeValues.size
+    val maxLabels = 10
+    val step = if (totalPoints > maxLabels) totalPoints / maxLabels else 1
+
+    timeValues.forEachIndexed { index, time ->
+        timeLabels += if (index % step == 0 || index == totalPoints - 1) "${time.toInt()}s" else ""
+    }
+
+    Graph(waveHeight, wavePeriod, waveDirection, timeLabels)
+}
+
+fun getLastTwenty(data: List<MeasuredWaveData>): List<MeasuredWaveData>{
+    return if (data.size > 20){
+        data.takeLast(20)
+    } else
+        data
+}
+
+// Formats API time data from ISO to hour.
+fun formatTime(time: String): String {
+    return LocalDateTime.parse(time).hour.toString()
+}
+
+@Composable
+fun Graph(
+    waveHeight: List<Float>,
+    wavePeriod: List<Float>,
+    waveDirection: List<Float>,
+    timeLabels: List<String>
+) {
+    var selectedIndex by remember { mutableIntStateOf(-1) }
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var canvasSize by remember { mutableStateOf(Size.Zero) } // Store canvas size
+
+    val minScale = 1f
+    val maxScale = 5f
+
+
+    // Remember the initial offset
+    var initialOffset by remember { mutableStateOf(Offset(0f, 0f)) }
+
+    Box(
+        modifier = Modifier
+            .height(300.dp)
+            .clip(RectangleShape)
+            .background(Color.White)
+            .padding(horizontal = 8.dp, vertical = 12.dp)
+            .pointerInput(Unit) {
+                // Zoom and Pan
+                detectTransformGestures { _, pan, zoom, _ ->
+                    val newScale = scale * zoom
+                    scale = newScale.coerceIn(minScale, maxScale)
+
+                    val centerX = size.width / 2
+                    val centerY = size.height / 2
+                    val offsetXChange = (centerX - offset.x) * (newScale / scale - 1)
+                    val offsetYChange = (centerY - offset.y) * (newScale / scale - 1)
+
+                    // Calculate min and max offsets
+                    val maxOffsetX = (size.width / 2) * (scale - 1)
+                    val minOffsetX = -maxOffsetX
+                    val maxOffsetY = (size.height / 2) * (scale - 1)
+                    val minOffsetY = -maxOffsetY
+
+                    // Update offsets while ensuring they stay within bounds
+                    if (scale * zoom <= maxScale) {
+                        offset = Offset(
+                            (offset.x + pan.x * scale + offsetXChange).coerceIn(
+                                minOffsetX,
+                                maxOffsetX
+                            ),
+                            (offset.y + pan.y * scale + offsetYChange).coerceIn(
+                                minOffsetY,
+                                maxOffsetX
+                            )
+                        )
+                    }
+
+                    // Store initial offset on pan
+                    if (pan != Offset(0f, 0f) && initialOffset == Offset(0f, 0f)) {
+                        initialOffset = Offset(offset.x, offset.y)
+                    }
+                }
+            }
+            .pointerInput(Unit) {
+                // Reset zoom and pan / quickly zoom
+                detectTapGestures(
+                    onDoubleTap = {
+                        if (scale != 1f) {
+                            scale = 1f
+                            offset = Offset(initialOffset.x, initialOffset.y)
+                        } else {
+                            scale = 2f
+                        }
+                    }
+                )
+            }
+            .pointerInput(Unit) {
+                // Hold down and drag to highlight and view points
+                detectDragGestures(
+                    onDragStart = { dragOffset ->
+                        val xStep = (canvasSize.width * scale) / (timeLabels.size.coerceAtLeast(1))
+                        selectedIndex = ((dragOffset.x - offset.x) / xStep).toInt().coerceIn(0, timeLabels.size - 1)
+                    },
+                    onDrag = { change, _ ->
+                        val xStep = (canvasSize.width * scale) / (timeLabels.size.coerceAtLeast(1))
+                        selectedIndex = ((change.position.x - offset.x) / xStep).toInt().coerceIn(0, timeLabels.size - 1)
+                    },
+                    onDragEnd = {
+                        selectedIndex = -1
+                    }
+                )
+            }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                translationX = offset.x
+                translationY = offset.y
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize(),
+            onDraw = {
+                canvasSize = size // Store the canvas size dynamically
+
+                val maxValues = listOf(
+                    waveHeight.maxOrNull() ?: 1f,
+                    wavePeriod.maxOrNull() ?: 1f,
+                    waveDirection.maxOrNull() ?: 1f
+                )
+
+                drawGridLines()
+                drawYLabels(maxValues)
+                drawXLabels(timeLabels)
+                plotLines(waveHeight, wavePeriod, waveDirection, maxValues, selectedIndex)
+                drawCoordinate(selectedIndex, timeLabels.size)
+            }
+        )
+    }
+    selectedIndex.takeIf { it != -1 }?.let {
+        DrawCoordinateKey(selectedIndex, waveHeight, wavePeriod, waveDirection, timeLabels)
+    }
+}
+
+// draw horizontal lines
+private fun DrawScope.drawGridLines() {
+    val gridLines = 8
+    val yStep = size.height / (gridLines)
+    val barWidthPx = 0.5.dp.toPx()
+
+    drawLine(Color.Gray, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = barWidthPx)
+    repeat(gridLines) { i ->
+        val y = yStep * (i + 1)
+        drawLine(Color.Gray, Offset(0f, y), Offset(size.width, y), strokeWidth = barWidthPx)
+    }
+
+}
+
+// Draw Labels on X axis
+private fun DrawScope.drawYLabels(maxValues: List<Float>) {
+    val labels = listOf("ft", "s", "°")
+    val positions = listOf(size.width - 160f, size.width - 100f, size.width - 40f)
+    val yStep = size.height / 8
+    val labelPadding = 2.dp.toPx()
+
+    for (i in 0..7) {
+        val y = size.height - (yStep * i)
+        maxValues.forEachIndexed { index, maxVal ->
+            drawContext.canvas.nativeCanvas.drawText(
+                String.format("%.1f", (maxVal / 6 * i).toDouble()) + labels[index],
+                positions[index],
+                y - labelPadding,
+                Paint().apply { textSize = 24f; color = android.graphics.Color.BLACK }
+            )
+        }
+    }
+}
+
+// Create X axis Labels
+private fun DrawScope.drawXLabels(timeLabels: List<String>) {
+    val xStep = size.width / (timeLabels.size).coerceAtLeast(1)
+    val labelPadding = 12.dp.toPx()
+
+    timeLabels.forEachIndexed { index, label ->
+        if (index % 2 == 0) {
+            drawContext.canvas.nativeCanvas.drawText(
+                label,
+                xStep * index,
+                size.height + labelPadding,
+                Paint().apply {
+                    textAlign = Paint.Align.CENTER
+                    textSize = density.run { 12.sp.toPx() }
+                }
+            )
+        }
+    }
+}
+
+// Plot the data Points
+private fun DrawScope.plotLines(
+    waveHeight: List<Float>,
+    wavePeriod: List<Float>,
+    waveDirection: List<Float>,
+    maxValues: List<Float>,
+    selectedIndex: Int
+) {
+    val xStep = size.width / (waveHeight.size).coerceAtLeast(1)
+    val graphHeight = size.height
+    val colors = listOf(Color.Blue, Color.Cyan, Color.Green)
+    val dataSets = listOf(waveHeight, wavePeriod, waveDirection)
+
+    // Draw Lines
+    dataSets.forEachIndexed { index, data ->
+        if (data.isNotEmpty()) {
+            val normalizedData = data.map { (it / (maxValues[index] + 0.01f)) * graphHeight }
+            for (i in 1 until normalizedData.size) {
+                drawLine(
+                    color = colors[index],
+                    start = Offset((i - 1) * xStep, graphHeight - normalizedData[i - 1]),
+                    end = Offset(i * xStep, graphHeight - normalizedData[i]),
+                    strokeWidth = 4f
+                )
+            }
+
+            // Draw selection point if within bounds
+            if (selectedIndex in data.indices) {
+                val selectedX = selectedIndex * xStep
+                val selectedY = graphHeight - normalizedData[selectedIndex]
+
+                drawCircle(
+                    color = colors[index],
+                    radius = 8f,
+                    center = Offset(selectedX, selectedY)
+                )
+            }
+        }
+    }
+}
+
+// Highlight selected index coordinates
+private fun DrawScope.drawCoordinate(selectedIndex: Int, totalLabels: Int) {
+    if (selectedIndex != -1) {
+        val selectedX = selectedIndex * (size.width / totalLabels)
+        drawLine(Color.Red, Offset(selectedX, 0f), Offset(selectedX, size.height), strokeWidth = 2f)
+    }
+}
+
+// Create Key for selected coordinates
+@Composable
+private fun DrawCoordinateKey(
+    selectedIndex: Int,
+    waveHeight: List<Float>,
+    wavePeriod: List<Float>,
+    waveDirection: List<Float>,
+    timeLabels: List<String>,
+) {
+    Box(
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
+            .padding(6.dp)
+            .shadow(1.dp)
+    ) {
+        Column( horizontalAlignment = Alignment.Start )
+        {
+            Text("Time: ${timeLabels[selectedIndex]}", fontSize = 12.sp)
+            Text("Height: ${waveHeight.getOrNull(selectedIndex) ?: "-"} ft", color = Color.Blue, fontSize = 12.sp)
+            Text("Period: ${wavePeriod.getOrNull(selectedIndex) ?: "-"} s", color = Color.Cyan, fontSize = 12.sp)
+            Text(
+                "Direction: ${waveDirection.getOrNull(selectedIndex) ?: "-"}°",
+                color = Color.Green,
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun PreviewDrawGraph(
+){
+    DrawServiceGraph(fakeWaveData)
+}
