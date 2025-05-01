@@ -13,6 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+secrets.properties
 /app/src/main/res/mipmap-hdpi/ic_launcher.webp
 /app/src/main/res/mipmap-mdpi/ic_launcher.webp
 /app/src/main/res/mipmap-xhdpi/ic_launcher.webp
