@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.wavereader.ui.HistoryScreen
+import com.example.wavereader.ui.history.HistoryScreen
 import com.example.wavereader.ui.auth.LoginScreen
 import com.example.wavereader.ui.auth.RegisterScreen
 import com.example.wavereader.ui.auth.StartScreen
