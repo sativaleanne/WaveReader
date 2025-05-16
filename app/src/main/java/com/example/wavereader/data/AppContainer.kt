@@ -22,7 +22,6 @@ class DefaultAppContainer : AppContainer {
      */
     private val retrofitWave: Retrofit = Retrofit.Builder()
         .addConverterFactory(Json.asConverterFactory("application/json".toMediaType()))
-        //.addConverterFactory(GsonConverterFactory.create())
         .baseUrl(waveBaseUrl)
         .build()
 

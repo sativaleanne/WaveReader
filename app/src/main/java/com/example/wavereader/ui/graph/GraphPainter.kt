@@ -1,4 +1,4 @@
-package com.example.wavereader.ui
+package com.example.wavereader.ui.graph
 
 import android.graphics.Paint
 import androidx.compose.ui.geometry.Offset
@@ -22,9 +22,8 @@ object GraphPainter {
         }
     }
 
-    fun DrawScope.drawYLabels(maxValues: List<Float>) {
-        val labels = listOf("ft", "s", "°")
-        val positions = listOf(size.width - 160f, size.width - 100f, size.width - 40f)
+    fun DrawScope.drawYLabels(maxValues: List<Float>, units: List<String>) {
+        val positions = units.indices.map { i -> size.width - 160f + i * 60f }
         val yStep = size.height / 8
         val labelPadding = 2.dp.toPx()
 
@@ -32,7 +31,7 @@ object GraphPainter {
             val y = size.height - (yStep * i)
             maxValues.forEachIndexed { index, maxVal ->
                 drawContext.canvas.nativeCanvas.drawText(
-                    String.format("%.1f", (maxVal / 6 * i).toDouble()) + labels[index],
+                    String.format("%.1f", (maxVal / 6 * i).toDouble()) + units[index],
                     positions[index],
                     y - labelPadding,
                     Paint().apply { textSize = 24f; color = android.graphics.Color.BLACK }
@@ -61,20 +60,19 @@ object GraphPainter {
     }
 
     fun DrawScope.plotLines(
-        waveHeight: List<Float>,
-        wavePeriod: List<Float>,
-        waveDirection: List<Float>,
+        dataSets: List<List<Float>>,
         maxValues: List<Float>,
+        colors: List<Color>,
         selectedIndex: Int
     ) {
-        val xStep = size.width / (waveHeight.size).coerceAtLeast(1)
+        val pointCount = dataSets.firstOrNull()?.size ?: 1
+        val xStep = size.width / pointCount.toFloat()
         val graphHeight = size.height
-        val colors = listOf(Color.Blue, Color.Cyan, Color.Green)
-        val dataSets = listOf(waveHeight, wavePeriod, waveDirection)
 
         dataSets.forEachIndexed { index, data ->
             if (data.isNotEmpty()) {
                 val normalizedData = data.map { (it / (maxValues[index] + 0.01f)) * graphHeight }
+
                 for (i in 1 until normalizedData.size) {
                     drawLine(
                         color = colors[index],
@@ -85,17 +83,18 @@ object GraphPainter {
                 }
 
                 if (selectedIndex in data.indices) {
-                    val selectedX = selectedIndex * xStep
-                    val selectedY = graphHeight - normalizedData[selectedIndex]
-
                     drawCircle(
                         color = colors[index],
                         radius = 8f,
-                        center = Offset(selectedX, selectedY)
+                        center = Offset(selectedIndex * xStep, graphHeight - normalizedData[selectedIndex])
                     )
                 }
             }
         }
+    }
+
+    fun DrawScope.plotForecastLines() {
+        // TODO
     }
 
     fun DrawScope.drawCoordinate(selectedIndex: Int, totalLabels: Int) {
