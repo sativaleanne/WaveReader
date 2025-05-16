@@ -10,11 +10,11 @@ interface WaveApiService {
     suspend fun getWaveData(
         @Query("latitude") latitude: Double,
         @Query("longitude") longitude: Double,
-        @Query("current") current: String = "wave_height,wave_direction,wave_period",
-        @Query("hourly") hourly: String = "wave_height,wave_direction,wave_period",
+        @Query("hourly") hourly: String,
+        @Query("current") current: String,
+        @Query("forecast_days") forecastDays: Int = 1,
         @Query("length_unit") lengthUnit: String = "imperial",
-        @Query("wind_speed_unit") windSpeedUnit: String = "mph",
-        @Query("forecast_days") forecastDays: Int = 1
+        @Query("timezone") timezone: String = "auto"
     ): WaveDataResponse
 }
 

@@ -22,59 +22,94 @@ data class WaveDataResponse (
     val elevation: Float,
 
     @SerialName("current_units")
-    val currentUnits: Units,
+    val currentUnits: Units? = null,
 
     @SerialName("current")
-    val current: Current,
+    val current: Current? = null,
 
     @SerialName("hourly_units")
-    val hourlyUnits: Units,
+    val hourlyUnits: Units? = null,
 
     @SerialName("hourly")
-    val hourly: Hourly
+    val hourly: Hourly? = null
 )
 
 @Serializable
-data class Current (
-    val time: String,
-    val interval: Long,
+data class Current(
+    val time: String? = null,
+    val interval: Long? = null,
 
-    @SerialName("wave_height")
-    val waveHeight: Float? = 0f,
+    @SerialName("wave_height") val waveHeight: Float? = null,
+    @SerialName("wave_direction") val waveDirection: Float? = null,
+    @SerialName("wave_period") val wavePeriod: Float? = null,
 
-    @SerialName("wave_direction")
-    val waveDirection: Float? = 0f,
+    @SerialName("wind_wave_height") val windWaveHeight: Float? = null,
+    @SerialName("wind_wave_direction") val windWaveDirection: Float? = null,
+    @SerialName("wind_wave_period") val windWavePeriod: Float? = null,
 
-    @SerialName("wave_period")
-    val wavePeriod: Float? = 0f
+    @SerialName("swell_wave_height") val swellWaveHeight: Float? = null,
+    @SerialName("swell_wave_direction") val swellWaveDirection: Float? = null,
+    @SerialName("swell_wave_period") val swellWavePeriod: Float? = null,
+
+    @SerialName("wind_speed") val windSpeed: Float? = null,
+    @SerialName("air_temperature") val airTemperature: Float? = null,
+    @SerialName("sea_surface_temperature") val seaSurfaceTemp: Float? = null
 )
 
 @Serializable
-data class Units (
+data class Units(
     val time: String,
     val interval: String? = null,
 
-    @SerialName("wave_height")
-    val waveHeight: String,
+    @SerialName("wave_height") val waveHeight: String? = null,
+    @SerialName("wave_direction") val waveDirection: String? = null,
+    @SerialName("wave_period") val wavePeriod: String? = null,
 
-    @SerialName("wave_direction")
-    val waveDirection: String,
+    @SerialName("wind_wave_height") val windWaveHeight: String? = null,
+    @SerialName("wind_wave_direction") val windWaveDirection: String? = null,
+    @SerialName("wind_wave_period") val windWavePeriod: String? = null,
 
-    @SerialName("wave_period")
-    val wavePeriod: String
+    @SerialName("swell_wave_height") val swellWaveHeight: String? = null,
+    @SerialName("swell_wave_direction") val swellWaveDirection: String? = null,
+    @SerialName("swell_wave_period") val swellWavePeriod: String? = null,
+
+    @SerialName("wind_speed") val windSpeed: String? = null,
+    @SerialName("air_temperature") val airTemperature: String? = null,
+    @SerialName("sea_surface_temperature") val seaSurfaceTemp: String? = null
 )
+
 
 @Serializable
 data class Hourly (
-    val time: List<String>,
+    val time: List<String> = emptyList(),
 
     @SerialName("wave_height")
-    val waveHeight: List<Float?>,
+    val waveHeight: List<Float?>? = null,
 
     @SerialName("wave_direction")
-    val waveDirection: List<Float?>,
+    val waveDirection: List<Float?>? = null,
 
     @SerialName("wave_period")
-    val wavePeriod: List<Float?>
+    val wavePeriod: List<Float?>? = null,
+
+    @SerialName("wind_wave_height")
+    val windWaveHeight: List<Float?>? = null,
+
+    @SerialName("wind_wave_direction")
+    val windWaveDirection: List<Float?>? = null,
+
+    @SerialName("wind_wave_period")
+    val windWavePeriod: List<Float?>? = null,
+
+    @SerialName("swell_wave_height")
+    val swellWaveHeight: List<Float?>? = null,
+
+    @SerialName("swell_wave_direction")
+    val swellWaveDirection: List<Float?>? = null,
+
+    @SerialName("swell_wave_period")
+    val swellWavePeriod: List<Float?>? = null
+
 )
+
 

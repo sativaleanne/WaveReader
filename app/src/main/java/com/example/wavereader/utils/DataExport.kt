@@ -7,7 +7,7 @@ import com.example.wavereader.model.HistoryRecord
 import org.json.JSONArray
 import org.json.JSONObject
 
-
+// Write to file in CVS format
 fun exportToCsv(context: Context, uri: Uri, data: List<HistoryRecord>) {
     try {
         context.contentResolver.openOutputStream(uri)?.use { output ->
@@ -28,6 +28,7 @@ fun exportToCsv(context: Context, uri: Uri, data: List<HistoryRecord>) {
     }
 }
 
+// Write to file in JSON format
 fun exportToJson(context: Context, uri: Uri, data: List<HistoryRecord>) {
     try {
         val jsonArray = JSONArray()
@@ -48,8 +49,8 @@ fun exportToJson(context: Context, uri: Uri, data: List<HistoryRecord>) {
         }
 
         context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-            outputStream.bufferedWriter().use { writer ->
-                writer.write(jsonArray.toString(2)) // Pretty print
+            outputStream.bufferedWriter().use { out ->
+                out.write(jsonArray.toString(2))
             }
         }
 
