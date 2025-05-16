@@ -1,7 +1,7 @@
 [versions]
 accompanistNavigationAnimation = "0.32.0"
 accompanistPermissions = "0.35.0-alpha"
-agp = "8.9.2"
+agp = "8.10.0"
 androidxJunit = "1.2.1"
 composeThemeAdapter = "1.2.1"
 converterGson = "latest.version"
@@ -39,6 +39,7 @@ uiTextGoogleFonts = "1.7.8"
 googleAndroidLibrariesMapsplatformSecretsGradlePlugin = "2.0.1"
 appcompat = "1.6.1"
 firebaseFirestoreKtx = "25.1.3"
+playServicesDrive = "17.0.0"
 
 [libraries]
 accompanist-navigation-animation = { module = "com.google.accompanist:accompanist-navigation-animation", version.ref = "accompanistNavigationAnimation" }
@@ -92,6 +93,7 @@ protolite-well-known-types = { group = "com.google.firebase", name = "protolite-
 androidx-ui-text-google-fonts = { group = "androidx.compose.ui", name = "ui-text-google-fonts", version.ref = "uiTextGoogleFonts" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 firebase-firestore-ktx = { group = "com.google.firebase", name = "firebase-firestore-ktx", version.ref = "firebaseFirestoreKtx" }
+play-services-drive = { group = "com.google.android.gms", name = "play-services-drive", version.ref = "playServicesDrive" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

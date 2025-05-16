@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.wavereader.WaveReaderApplication
 import com.example.wavereader.data.WaveApiRepository
+import com.example.wavereader.model.WaveApiQuery
 import com.example.wavereader.model.WaveDataResponse
 import kotlinx.coroutines.launch
 import retrofit2.HttpException
@@ -18,7 +19,6 @@ import java.io.IOException
 
 /*
 * Service View Model for controlling the api calls.
-* TODO: Add filters to getWaveApidata
  */
 class ServiceViewModel(
     private val waveApiRepository: WaveApiRepository
@@ -26,16 +26,12 @@ class ServiceViewModel(
     var serviceUiState: UiState<WaveDataResponse> by mutableStateOf(UiState.Loading)
         private set
 
-    fun fetchWaveData(coordinates: Pair<Double, Double>) {
-        fetchWaveData(coordinates.first, coordinates.second)
-    }
-
-    fun fetchWaveData(lat: Double, long: Double) {
+    fun fetchWaveData(query: WaveApiQuery) {
         viewModelScope.launch {
             serviceUiState = UiState.Loading
             serviceUiState = try {
-                val dataResult = waveApiRepository.getWaveApiData(lat, long)
-                UiState.Success(dataResult)
+                val data = waveApiRepository.getWaveApiData(query)
+                UiState.Success(data)
             } catch (e: IOException) {
                 UiState.Error("Network error")
             } catch (e: HttpException) {

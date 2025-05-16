@@ -4,6 +4,7 @@ import com.example.wavereader.model.HistoryRecord
 import com.example.wavereader.model.WaveDataPoint
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -14,18 +15,36 @@ class HistoryRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
 
-    suspend fun fetchHistoryRecords(): List<HistoryRecord> {
+    suspend fun fetchHistoryRecords(
+        locationQuery: String = "",
+        sortDescending: Boolean = true,
+        startDateMillis: Long? = null,
+        endDateMillis: Long? = null
+    ): List<HistoryRecord> {
         val user = auth.currentUser ?: return emptyList()
 
         return try {
-            val snapshot = firestore
+            var query = firestore
                 .collection("waveHistory")
                 .document(user.uid)
                 .collection("sessions")
-                .get()
-                .await()
+                .orderBy("timestamp", if (sortDescending) Query.Direction.DESCENDING else Query.Direction.ASCENDING)
 
-            snapshot.map { document ->
+            if (startDateMillis != null) {
+                query = query.whereGreaterThanOrEqualTo("timestamp", startDateMillis)
+            }
+            if (endDateMillis != null) {
+                query = query.whereLessThanOrEqualTo("timestamp", endDateMillis)
+            }
+
+            val snapshot = query.get().await()
+
+            snapshot.mapNotNull { document ->
+                val location = document.getString("location") ?: return@mapNotNull null
+                if (locationQuery.isNotBlank() && !location.contains(locationQuery, ignoreCase = true)) {
+                    return@mapNotNull null
+                }
+
                 val dataPoints = (document.get("dataPoints") as? List<Map<String, Any>>)?.map { point ->
                     WaveDataPoint(
                         time = (point["time"] as Number).toFloat(),
@@ -35,7 +54,7 @@ class HistoryRepository(
                     )
                 } ?: emptyList()
 
-                val timestampMillis = document.getLong("timestamp") ?: System.currentTimeMillis()
+                val timestampMillis = document.getLong("timestamp") ?: return@mapNotNull null
                 val formattedTimestamp = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(timestampMillis))
                 val lat = document.getDouble("lat")
                 val lon = document.getDouble("lon")
@@ -43,15 +62,17 @@ class HistoryRepository(
                 HistoryRecord(
                     id = document.id,
                     timestamp = formattedTimestamp,
-                    location = document.getString("location") ?: "Unknown",
+                    location = location,
                     lat = lat,
                     lon = lon,
                     dataPoints = dataPoints
                 )
             }
+
         } catch (e: Exception) {
             println("Error fetching history: $e")
             emptyList()
         }
     }
+
 }

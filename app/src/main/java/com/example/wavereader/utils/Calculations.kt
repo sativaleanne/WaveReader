@@ -5,47 +5,27 @@ import kotlin.math.atan2
 import kotlin.math.pow
 import kotlin.math.sqrt
 
+// Calculations established from NDBC Tech Doc Nondirectional and
+//Directional Wave
+//Data Analysis
+//Procedures
 
-// Wave height calculation
-fun calculateWaveHeight(acceleration: List<Float>, dt: Float): Float {
-
-    val verticalDisplacement = doubleIntegrate(acceleration, dt)
-    // Calculate peak-to-peak distance
-    val max = verticalDisplacement.maxOrNull() ?: 0f
-    val min = verticalDisplacement.minOrNull() ?: 0f
-    return max - min
+// The significant wave height is derived from the zeroth spectral moment m0 represents the total wave energy.
+//
+fun calculateSignificantWaveHeight(m0: Float): Float {
+    return 4 * sqrt(m0)
 }
 
-// Double integration for acceleration to velocity to displacement
-fun doubleIntegrate(acceleration: List<Float>, dt: Float): List<Float> {
-    val velocity = mutableListOf(0f)
-    val displacement = mutableListOf(0f)
 
-    for (i in 1 until acceleration.size) {
-        val v = velocity.last() + acceleration[i] * dt
-        velocity.add(v)
-
-        val d = displacement.last() + v * dt
-        displacement.add(d)
-    }
-
-    return displacement
+// Average Wave Period
+//
+fun calculateAveragePeriod(m0: Float, m1: Float): Float {
+    return if (m1 != 0f) m0 / m1 else 0f
 }
 
-// Wave Period = 1/f
-fun calculateWavePeriod(verticalAcceleration: List<Float>, samplingRate: Float): Float {
-    if (verticalAcceleration.isEmpty()) {
-        println("Data is empty!")
-        return 0f
-    }
-    val n = verticalAcceleration.size
-    val windowedData = applyHanningWindow(verticalAcceleration)
-    val fft = getFft(windowedData, n)
-    val peakFrequency = getPeakIndex(fft, n) * samplingRate / n
-    return if (peakFrequency > 0) 1 / peakFrequency else 0f
-}
-
-fun applyHanningWindow(data: List<Float>): List<Float> {
+// Hanning to reduce spectral leaks
+// pg 3-4
+fun hanningWindow(data: List<Float>): List<Float> {
     val n = data.size
     return data.mapIndexed { i, value ->
         val multiplier = 0.5f * (1 - kotlin.math.cos(2 * Math.PI * i / (n - 1))).toFloat()
@@ -54,6 +34,7 @@ fun applyHanningWindow(data: List<Float>): List<Float> {
 }
 
 // Calculate FFT
+// pg. 5-6
 // Use JTransforms Fast Fourier Transform to transform from temporal domain to frequency domain
 fun getFft(data: List<Float>, n: Int): FloatArray {
 
@@ -92,9 +73,8 @@ fun getPeakIndex(data: FloatArray, n: Int): Int {
     return peakIndex
 }
 
-//TODO
-// Direction calculation
-// Temporary solution using horizontal acceleration
+// Calcualtes phase difference between two orthogonal acceleration FFTs to estimate wave direction
+//
 fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
     if (accelX.isEmpty() || accelY.isEmpty()) {
         println("Warning: data is empty!")
@@ -102,8 +82,8 @@ fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
     }
     val n = accelX.size
 
-    val windowedX = applyHanningWindow(accelX)
-    val windowedY = applyHanningWindow(accelY)
+    val windowedX = hanningWindow(accelX)
+    val windowedY = hanningWindow(accelY)
 
     val fftX = getFft(windowedX, n)
     val fftY = getFft(windowedY, n)
@@ -122,4 +102,49 @@ fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
     if (waveDirection < 0) waveDirection += 360 // Normalize to 0-360°
 
     return waveDirection
+}
+
+//converts FFT output into a power spectrum (density per frequency band), normalized by FFT size.
+fun computeSpectralDensity(fft: FloatArray, n: Int): List<Float> {
+    val halfN = n / 2
+    return (0 until halfN).map { i ->
+        val re = fft[2 * i]
+        val im = fft[2 * i + 1]
+        (re * re + im * im) / n
+    }
+}
+
+//Each moment is calculated as the weighted sum of spectral density across frequencies
+//
+fun calculateSpectralMoments(spectrum: List<Float>, samplingRate: Float): Triple<Float, Float, Float> {
+    val df = samplingRate / (2 * spectrum.size) // frequency resolution
+    val freq = spectrum.indices.map { it * df }
+
+    var m0 = 0f
+    var m1 = 0f
+    var m2 = 0f
+
+    for (i in spectrum.indices) {
+        val S = spectrum[i]
+        val f = freq[i]
+        m0 += S * df
+        m1 += S * f * df
+        m2 += S * f * f * df
+    }
+
+    return Triple(m0, m1, m2)
+}
+
+/*
+* Significant height is a direct function of sqrt(m0)
+
+Average period helps show trend shifts
+
+Zero-crossing period offers a stable baseline for comparisons
+* */
+fun computeWaveMetricsFromSpectrum(m0: Float, m1: Float, m2: Float): Triple<Float, Float, Float> {
+    val significantHeight = calculateSignificantWaveHeight(m0)
+    val avgPeriod = calculateAveragePeriod(m0, m1)
+    val zeroCrossingPeriod = if (m2 != 0f) sqrt(m0 / m2) else 0f
+    return Triple(significantHeight, avgPeriod, zeroCrossingPeriod)
 }
