@@ -1,4 +1,4 @@
-package com.example.wavereader.ui.history
+package com.example.wavereader.ui.main
 
 import android.content.Context
 import android.net.Uri
@@ -18,15 +18,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.example.wavereader.model.*
+import com.example.wavereader.ui.components.HistoryFilterPanel
 import com.example.wavereader.ui.graph.HistoryGraph
 import com.example.wavereader.utils.exportToCsv
 import com.example.wavereader.utils.exportToJson
 import com.example.wavereader.viewmodels.HistoryViewModel
+import com.example.wavereader.viewmodels.LocationViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -191,7 +192,7 @@ fun HistoryCard(
                         time = it.time
                     )
                 }
-                HistoryGraph(sessionDataPoints)
+                HistoryGraph(waveData = sessionDataPoints, isXLabeled = false)
             }
         }
     }

@@ -6,10 +6,10 @@ import com.example.wavereader.model.MeasuredWaveData
 
 /*
 * History graph setup for drop down mini graphs in history page.
-* TODO: Fix X axis labels for summary graphs and mini card graphs
+* TODO: Fix X axis labels for summary graphs
  */
 @Composable
-fun HistoryGraph(waveData: List<MeasuredWaveData>, isInteractive: Boolean = false) {
+fun HistoryGraph(waveData: List<MeasuredWaveData>, isInteractive: Boolean = false, isXLabeled: Boolean = true) {
     if (waveData.isEmpty()) return
 
     val height = waveData.map { it.waveHeight }
@@ -23,5 +23,5 @@ fun HistoryGraph(waveData: List<MeasuredWaveData>, isInteractive: Boolean = fals
         GraphLine(direction, "Wave Direction", Color.Green, "°")
     )
 
-    Graph(lines, timeLabels, isInteractive = isInteractive)
+    Graph(lines, timeLabels, isInteractive = isInteractive, isXLabeled = isXLabeled)
 }
