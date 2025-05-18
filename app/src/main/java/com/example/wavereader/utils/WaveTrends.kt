@@ -1,45 +1,114 @@
 package com.example.wavereader.utils
 
+import com.example.wavereader.model.MeasuredWaveData
 import kotlin.math.pow
+import kotlin.math.sqrt
 
+
+/** Helper Function:
+ * Returns the standard deviation (sample-based) of the list.
+ * */
+fun List<Float>.standardDeviation(): Float {
+    if (size < 2) return 0f
+    val mean = average().toFloat()
+    val variance = this.map { (it - mean).pow(2) }.sum() / this.size
+    return sqrt(variance)
+}
+
+/**
+ * Gets z-score of the last value in the list.
+ * */
+fun List<Float>.zScore(): Float {
+    if (size < 2) return 0f
+    val mean = average().toFloat()
+    val std = standardDeviation()
+    return if (std == 0f) 0f else (last() - mean) / std
+}
+
+/**
+ * Calculates moving average over a sliding window.
+ * */
 fun movingAverage(data: List<Float>, window: Int): List<Float> {
     if (data.size < window || window < 1) return emptyList()
-    return data.windowed(window, 1) { it.average().toFloat() }
+    return data.windowed(window, step = 1) { it.average().toFloat() }
 }
 
-fun trendDirection(data: List<Float>, threshold: Float = 0.1f): String {
-    if (data.size < 2) return "N/A"
-    val change = data.last() - data.first()
-    return when {
-        change > threshold -> "Increasing"
-        change < -threshold -> "Decreasing"
-        else -> "Stable"
-    }
-}
+///**
+//TODO: Not Sure if needed.
+// * Describes the trend direction based on a threshold.
+// * */
+//fun trendDirection(data: List<Float>, threshold: Float = 0.1f): String {
+//    if (data.size < 2) return "N/A"
+//    val delta = data.last() - data.first()
+//    return when {
+//        delta > threshold -> "Increasing"
+//        delta < -threshold -> "Decreasing"
+//        else -> "Stable"
+//    }
+//}
 
+/**
+ * Linear regression slope
+ * */
 fun slope(data: List<Float>): Float {
     if (data.size < 2) return 0f
     val n = data.size
-    val x = (0 until n).map { it.toFloat() }
+    val x = List(n) { it.toFloat() }
     val xMean = x.average().toFloat()
     val yMean = data.average().toFloat()
 
-    val numerator = x.zip(data).sumOf { (xi, yi) -> ((xi - xMean) * (yi - yMean)).toDouble() }
-    val denominator = x.sumOf { xi -> ((xi - xMean).pow(2)).toDouble() }
+    val numerator = x.zip(data).map {
+        (xi, yi) -> (xi - xMean) * (yi - yMean)
+    }.sum()
 
-    return if (denominator == 0.0) 0f else (numerator / denominator).toFloat()
+    val denominator = x.map {
+        xi -> (xi - xMean).pow(2)
+    }.sum()
+
+    return if (denominator == 0f) 0f else numerator / denominator
 }
 
+/**
+ * Forecasts the next value in a list using slope.
+ * */
 fun forecastNext(data: List<Float>): Float? {
     if (data.size < 2) return null
     val m = slope(data)
-    val x = (0 until data.size).map { it.toFloat() }
-    val xMean = x.average().toFloat()
+    val xMean = data.indices.average().toFloat()
     val yMean = data.average().toFloat()
     val b = yMean - m * xMean
     return m * data.size + b
 }
 
-fun predictNextBigWave() {
-    //TODO
+/**
+ * Returns a confidence score that a big wave is coming up
+ * based on recent rising slope and deviation
+ */
+fun nextBigWaveConfidence(waves: List<MeasuredWaveData>): Float {
+    val recent = waves.takeLast(6)
+    if (recent.size < 6) return 0f
+
+    val heights = recent.map { it.waveHeight }
+
+    // Height trend score
+    val heightSlope = slope(heights).coerceAtLeast(0f)
+    val trendScore = (heightSlope / 0.2f).coerceIn(0f, 1f)
+
+    // Z-score
+    val zScore = heights.zScore().coerceAtLeast(0f)
+    val heightScore = (zScore / 2f).coerceIn(0f, 1f)
+
+    // Magnitude confidence
+    val magnitudeScore = (heights.last() / 3.0f).coerceIn(0f, 1f)
+
+    // Weighted average
+    return (0.4f * trendScore + 0.3f * heightScore + 0.3f * magnitudeScore).coerceIn(0f, 1f)
 }
+
+/**
+ * Returns true if the confidence of a big wave is coming is high enough
+ */
+fun predictNextBigWave(waves: List<MeasuredWaveData>): Boolean {
+    return nextBigWaveConfidence(waves) > 0.75f
+}
+

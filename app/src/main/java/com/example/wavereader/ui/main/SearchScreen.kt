@@ -6,13 +6,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -21,19 +18,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,6 +48,8 @@ import com.example.wavereader.R
 import com.example.wavereader.model.ApiVariable
 import com.example.wavereader.model.WaveApiQuery
 import com.example.wavereader.model.WaveDataResponse
+import com.example.wavereader.ui.components.DropDownFilterSearchButton
+import com.example.wavereader.ui.components.WaveDataCard
 import com.example.wavereader.ui.graph.ServiceGraph
 import com.example.wavereader.viewmodels.LocationViewModel
 import com.example.wavereader.viewmodels.ServiceViewModel
@@ -240,43 +234,12 @@ fun SearchResultScreen(
             }
             Column(modifier = Modifier.padding(16.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Height", fontWeight = FontWeight.Bold)
-                                Text("${it.current?.waveHeight ?: "-"} ft")
-                            }
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Period", fontWeight = FontWeight.Bold)
-                                Text("${it.current?.wavePeriod ?: "-"} s")
-                            }
-                            Column(
-                                modifier = Modifier.padding(8.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("Direction", fontWeight = FontWeight.Bold)
-                                Text("${it.current?.waveDirection ?: "-"}°")
-                            }
-                        }
-                    }
+                    WaveDataCard(
+                        listOf(it.current?.waveHeight, it.current?.wavePeriod, it.current?.waveDirection),
+                        listOf("Height", "Period", "Direction"),
+                        listOf("ft", "s", "°")
+                    )
                 }
-
                 Box(
                     modifier = Modifier
                         .height(300.dp)
@@ -316,72 +279,6 @@ fun ErrorScreen(modifier: Modifier = Modifier) {
             contentDescription = stringResource(R.string.error_image_descr)
         )
         Text(text = stringResource(R.string.loading_failed_text), modifier = Modifier.padding(16.dp))
-    }
-}
-
-@Composable
-fun DropDownFilterSearchButton(
-    allVariables: List<ApiVariable>,
-    selectedVariables: Set<ApiVariable>,
-    onUpdate: (Set<ApiVariable>) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        OutlinedButton(
-            onClick = { expanded = !expanded }
-        ) {
-            Text("Filter Options")
-            Spacer(Modifier.width(8.dp))
-            Icon(
-                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = "Expand filter options"
-            )
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .widthIn(min = 220.dp)
-        ) {
-            Column(
-                Modifier
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = "Select Data Types",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                allVariables.forEach { variable ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = variable in selectedVariables,
-                            onCheckedChange = {
-                                val updated = if (it)
-                                    selectedVariables + variable
-                                else
-                                    selectedVariables - variable
-                                onUpdate(updated)
-                            }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = variable.label,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
