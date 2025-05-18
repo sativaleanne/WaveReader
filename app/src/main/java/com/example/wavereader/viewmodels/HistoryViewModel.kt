@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+// TODO: Add Location View Model for location searching by zip and lat/long
+
 class HistoryViewModel(
     private val historyRepository: HistoryRepository = HistoryRepository()
 ) : ViewModel() {

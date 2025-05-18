@@ -7,7 +7,9 @@ import com.example.wavereader.model.HistoryRecord
 import org.json.JSONArray
 import org.json.JSONObject
 
-// Write to file in CVS format
+/**
+ * Write to file in CVS format
+ * */
 fun exportToCsv(context: Context, uri: Uri, data: List<HistoryRecord>) {
     try {
         context.contentResolver.openOutputStream(uri)?.use { output ->
@@ -16,8 +18,10 @@ fun exportToCsv(context: Context, uri: Uri, data: List<HistoryRecord>) {
             data.forEach { record ->
                 val lat = record.lat?.toString() ?: ""
                 val lon = record.lon?.toString() ?: ""
+                val timestamp = record.timestamp.replace("," , "")
+                val location = record.location.replace("," , "")
                 record.dataPoints.forEach { point ->
-                    writer.write("${record.id},${record.timestamp},${record.location},$lat,$lon,${point.height},${point.period},${point.direction}\n")
+                    writer.write("${record.id},$timestamp,$location,$lat,$lon,${point.height},${point.period},${point.direction}\n")
                 }
             }
             writer.flush()
@@ -28,7 +32,9 @@ fun exportToCsv(context: Context, uri: Uri, data: List<HistoryRecord>) {
     }
 }
 
-// Write to file in JSON format
+/**
+ *  Write to file in JSON format
+ *  */
 fun exportToJson(context: Context, uri: Uri, data: List<HistoryRecord>) {
     try {
         val jsonArray = JSONArray()

@@ -9,22 +9,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,10 +23,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.wavereader.model.GraphDisplayOptions
+import com.example.wavereader.ui.components.DropDownFilterGraphView
+import com.example.wavereader.ui.components.WaveDataCard
 import com.example.wavereader.ui.graph.SensorGraph
 import com.example.wavereader.utils.RequestLocationPermission
 import com.example.wavereader.viewmodels.LocationViewModel
@@ -192,41 +182,12 @@ fun ShowRecordData(
 
     Column(modifier = Modifier.padding(16.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Height", fontWeight = FontWeight.Bold)
-                        Text("${height ?: "-"} ft")
-                    }
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Period", fontWeight = FontWeight.Bold)
-                        Text("${period ?: "-"} s")
-                    }
-                    Column(
-                        modifier = Modifier.padding(8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text("Direction", fontWeight = FontWeight.Bold)
-                        Text("${direction ?: "-"}°")
-                    }
-                }
-            }
+            // Display Wave Data
+            WaveDataCard(
+                listOf(height, period, direction),
+                listOf("Height", "Period", "Direction"),
+                listOf("ft", "s", "°")
+            )
             // Filter Graph display
             DropDownFilterGraphView(displayOptions, onUpdate = { displayOptions = it })
 
@@ -236,98 +197,6 @@ fun ShowRecordData(
                     .fillMaxWidth()
             ) {
                 SensorGraph(uiState.measuredWaveList, displayOptions)
-            }
-        }
-    }
-}
-
-
-@Composable
-fun DropDownFilterGraphView(
-    displayOptions: GraphDisplayOptions,
-    onUpdate: (GraphDisplayOptions) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-
-    Box {
-        OutlinedButton(onClick = { expanded = !expanded }) {
-            Text("Graph Filters")
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                contentDescription = "Expand graph filter options"
-            )
-        }
-
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier
-                .padding(horizontal = 8.dp)
-                .widthIn(min = 220.dp)
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = "Toggle Graph Lines",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Wave Height", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = displayOptions.showHeight,
-                        onCheckedChange = { onUpdate(displayOptions.copy(showHeight = it)) }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Wave Period", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = displayOptions.showPeriod,
-                        onCheckedChange = { onUpdate(displayOptions.copy(showPeriod = it)) }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Wave Direction", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = displayOptions.showDirection,
-                        onCheckedChange = { onUpdate(displayOptions.copy(showDirection = it)) }
-                    )
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Wave Forecast", style = MaterialTheme.typography.bodyMedium)
-                    Switch(
-                        checked = displayOptions.showForecast,
-                        onCheckedChange = { onUpdate(displayOptions.copy(showForecast = it)) }
-                    )
-                }
             }
         }
     }

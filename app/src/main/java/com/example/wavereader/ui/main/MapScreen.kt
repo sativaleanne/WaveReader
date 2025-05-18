@@ -35,6 +35,7 @@ fun MapScreen(
     locationViewModel: LocationViewModel,
     fusedLocationClient: FusedLocationProviderClient
 ) {
+    //TODO: MOVE API Key
     val context = LocalContext.current
     val coordinates by locationViewModel.coordinatesState.observeAsState()
     val apiKey = context.getString(R.string.google_api_key)

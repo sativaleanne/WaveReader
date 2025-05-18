@@ -21,8 +21,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-/*
+/**
 * Sensor View Model for control the sensor manager and processing data
+* Resources: For calculations and data processing
+ * https://www.ndbc.noaa.gov/faq/wavecalc.shtml
+ * https://www.ndbc.noaa.gov/wavemeas.pdf
+* TODO: Update with predictions
  */
 data class WaveUiState(
         val measuredWaveList: List<MeasuredWaveData> = emptyList(),
@@ -56,7 +60,7 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         private val verticalAcceleration = mutableListOf<Float>()
         private val horizontalAcceleration = mutableListOf<Array<Float>>()
-        private var filteredWaveDirection = 0f
+        private var filteredWaveDirection: Float? = null
 
         private var startTime = 0L
         private var dataProcessTime = 0L
@@ -75,9 +79,14 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                         Sensor.TYPE_GYROSCOPE -> {
                                 val gyroscopeDt = if (lastTimestamp != 0L) (event.timestamp - lastTimestamp) / 1_000_000_000f else 0f
                                 val gyroZ = event.values[2]
-                                val integratedAngle = filteredWaveDirection + Math.toDegrees(gyroZ * gyroscopeDt.toDouble()).toFloat()
+
                                 val sensorHeading = getMagneticHeading()
-                                filteredWaveDirection = alpha * integratedAngle + (1 - alpha) * sensorHeading
+                                filteredWaveDirection = if (filteredWaveDirection == null) {
+                                        sensorHeading
+                                } else {
+                                        val integratedAngle = filteredWaveDirection!! + Math.toDegrees(gyroZ * gyroscopeDt.toDouble()).toFloat()
+                                        alpha * integratedAngle + (1 - alpha) * sensorHeading
+                                }
                         }
                         Sensor.TYPE_MAGNETIC_FIELD -> {
                                 System.arraycopy(event.values, 0, magnetometerReading, 0, magnetometerReading.size)
@@ -94,15 +103,14 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         private fun processData() {
                 if (verticalAcceleration.size < 1024) return
 
-                val windowSize = 1024   // Roughly 20s of data at 50Hz
-                val stepSize = 512      // 50% overlap
+                val windowSize = 1024
+                val stepSize = 512
 
                 // Overlap data chunks
                 val segments = overlapData(verticalAcceleration, windowSize, stepSize)
 
                 val getHeights = mutableListOf<Float>()
                 val getPeriods = mutableListOf<Float>()
-                val allZeroPeriods = mutableListOf<Float>()
 
                 for (segment in segments) {
                         // Windowing to reduce spectral leakage
@@ -115,22 +123,23 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                         // Extract spectral moments: m0, m1, m2
                         val (m0, m1, m2) = calculateSpectralMoments(spectrum, samplingRate)
                         // Compute significant wave height, average period, zero-crossing period
+                        // TODO: Update needed variables
                         val (sigWaveHeight, avePeriod, tZero) = computeWaveMetricsFromSpectrum(m0, m1, m2)
 
                         getHeights.add(sigWaveHeight)
                         getPeriods.add(avePeriod)
-                        allZeroPeriods.add(tZero)
                 }
                 // Final average values
                 val height = getHeights.average().toFloat()
                 val period = getPeriods.average().toFloat()
-                val avgZeroPeriod = allZeroPeriods.average().toFloat()
 
                 val elapsedTime = (SystemClock.elapsedRealtime() - startTime) / 1000f
                 val accelX = horizontalAcceleration.map { it[0] }
                 val accelY = horizontalAcceleration.map { it[1] }
                 val fftDirection = calculateWaveDirection(accelX, accelY)
-                val direction = (filteredWaveDirection + fftDirection) / 2f
+                val direction = filteredWaveDirection?.let {
+                        (it + fftDirection) / 2f
+                } ?: fftDirection
 
                 updateMeasuredWaveData(height, period, direction, elapsedTime)
         }

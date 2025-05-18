@@ -22,6 +22,7 @@ object GraphPainter {
         }
     }
 
+    // TODO: Adjust Labels to hug edge of graph
     fun DrawScope.drawYLabels(maxValues: List<Float>, units: List<String>) {
         val positions = units.indices.map { i -> size.width - 160f + i * 60f }
         val yStep = size.height / 8

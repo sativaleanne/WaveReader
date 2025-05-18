@@ -45,15 +45,17 @@ data class GraphLine(
     val unit: String
 )
 
-/*
+/**
 * One Graph to rule them all
+* TODO: Fix Scroll Behavior
  */
 @Composable
 fun Graph(
     lines: List<GraphLine>,
     timeLabels: List<String>,
     isInteractive: Boolean = true,
-    isScrollable: Boolean = false
+    isScrollable: Boolean = false,
+    isXLabeled: Boolean = true
 ) {
     var scrollOffset by remember { mutableFloatStateOf(0f) }
     val pointSpacing = 40f
@@ -120,7 +122,9 @@ fun Graph(
                     drawYLabels(maxValues, units)
                     if (isScrollable) drawContext.canvas.save()
                     drawContext.canvas.translate(if (isScrollable) -scrollOffset else 0f, 0f)
-                    drawXLabels(timeLabels)
+                    if(isXLabeled) {
+                        drawXLabels(timeLabels)
+                    }
                     plotLines(
                         dataSets = dataSets,
                         maxValues = maxValues,
