@@ -19,3 +19,30 @@ enum class ApiVariable(val label: String, val paramName: String) {
     SwellWaveDirection("Swell Wave Direction", "swell_wave_direction"),
     SwellWavePeriod("Swell Wave Period", "swell_wave_period")
 }
+
+enum class FilterPreset(val label: String, val variables: Set<ApiVariable>) {
+    Wave(
+        "Waves",
+        setOf(ApiVariable.WaveHeight, ApiVariable.WavePeriod, ApiVariable.WaveDirection)
+    ),
+    Swell(
+        "Swells",
+        setOf(ApiVariable.SwellWaveHeight, ApiVariable.SwellWavePeriod, ApiVariable.SwellWaveDirection)
+    ),
+    Wind(
+        "Wind",
+        setOf(ApiVariable.WindWaveHeight, ApiVariable.WindWavePeriod, ApiVariable.WindWaveDirection)
+    ),
+    Heights(
+        "Only Heights",
+        setOf(ApiVariable.WaveHeight, ApiVariable.WindWaveHeight, ApiVariable.SwellWaveHeight)
+    ),
+    Periods(
+        "Only Periods",
+        setOf(ApiVariable.WavePeriod, ApiVariable.WindWavePeriod, ApiVariable.SwellWavePeriod)
+    ),
+    Directions(
+        "Only Directions",
+        setOf(ApiVariable.WaveDirection, ApiVariable.WindWaveDirection, ApiVariable.SwellWaveDirection)
+    )
+}

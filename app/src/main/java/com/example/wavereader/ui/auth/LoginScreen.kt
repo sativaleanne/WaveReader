@@ -1,10 +1,13 @@
 package com.example.wavereader.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,7 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.example.wavereader.R
 
 /*
 * Login Screen for returning users with active firebase account
@@ -41,6 +48,15 @@ fun LoginScreen(
         IconButton(onClick = onBack, modifier = Modifier.align(Alignment.Start)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
+        Image(
+            painter = painterResource(id = R.drawable.wavereadericoncropped),
+            contentScale = ContentScale.Crop,
+            contentDescription = "App Logo",
+            modifier = Modifier
+                .size(150.dp)
+                .clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text("Welcome Back!", fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
@@ -100,6 +116,7 @@ fun LoginScreen(
                         }
                     }
             },
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         ) {

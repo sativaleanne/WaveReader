@@ -21,6 +21,8 @@ import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.wavereader.model.ApiVariable
+import com.example.wavereader.model.FilterPreset
 import com.example.wavereader.model.GraphDisplayOptions
 import com.example.wavereader.model.HistoryFilterState
 import com.example.wavereader.model.SortOrder
@@ -125,7 +128,7 @@ fun DropDownFilterGraphView(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Wave Forecast", style = MaterialTheme.typography.bodyMedium)
+                    Text("Next Big Wave", style = MaterialTheme.typography.bodyMedium)
                     Switch(
                         checked = displayOptions.showForecast,
                         onCheckedChange = { onUpdate(displayOptions.copy(showForecast = it)) }
@@ -137,19 +140,16 @@ fun DropDownFilterGraphView(
 }
 
 @Composable
-fun DropDownFilterSearchButton(
-    allVariables: List<ApiVariable>,
-    selectedVariables: Set<ApiVariable>,
-    onUpdate: (Set<ApiVariable>) -> Unit
+fun DropDownFilterSearchPresets(
+    selectedPreset: FilterPreset,
+    onPresetSelected: (FilterPreset) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
     Box {
-        OutlinedButton(
-            onClick = { expanded = !expanded }
-        ) {
-            Text("Filter Options")
-            Spacer(Modifier.width(8.dp))
+        OutlinedButton(onClick = { expanded = !expanded }) {
+            Text(selectedPreset.label)
+            Spacer(modifier = Modifier.width(8.dp))
             Icon(
                 imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                 contentDescription = "Expand filter options"
@@ -163,44 +163,27 @@ fun DropDownFilterSearchButton(
                 .padding(horizontal = 8.dp)
                 .widthIn(min = 220.dp)
         ) {
-            Column(
-                Modifier
-                    .padding(12.dp)
-            ) {
+            Column(modifier = Modifier.padding(12.dp)) {
                 Text(
-                    text = "Select Data Types",
+                    text = "Select Filter Type",
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                allVariables.forEach { variable ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Checkbox(
-                            checked = variable in selectedVariables,
-                            onCheckedChange = {
-                                val updated = if (it)
-                                    selectedVariables + variable
-                                else
-                                    selectedVariables - variable
-                                onUpdate(updated)
-                            }
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = variable.label,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+                FilterPreset.entries.forEach { preset ->
+                    DropdownMenuItem(
+                        text = { Text(preset.label) },
+                        onClick = {
+                            onPresetSelected(preset)
+                            expanded = false
+                        }
+                    )
                 }
             }
         }
     }
 }
+
 
 // TODO: Update location using locationviewmodel geocoding.
 @OptIn(ExperimentalMaterial3Api::class)

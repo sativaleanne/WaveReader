@@ -12,20 +12,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.wavereader.model.GraphDisplayOptions
+import com.example.wavereader.testData.FakeSensorViewModel
+import com.example.wavereader.ui.components.AlertConfirm
 import com.example.wavereader.ui.components.DropDownFilterGraphView
 import com.example.wavereader.ui.components.WaveDataCard
 import com.example.wavereader.ui.graph.SensorGraph
@@ -53,7 +60,8 @@ fun RecordDataScreen(
     ) {
         if (viewModel.checkSensors()) {
             // Display Data
-                ShowRecordData(uiState = uiState)
+            ShowRecordData(uiState = uiState, viewModel = viewModel)
+            //FakeRecordScreen()
             if (isSensorActive and uiState.measuredWaveList.isEmpty()) {
                 Text("Collecting Data...")
             }
@@ -152,29 +160,42 @@ fun SaveButton(
 
 // Clear data from graph and database
 @Composable
-fun ClearButton(
-    viewModel: SensorViewModel
-) {
-    Button(
-        modifier = Modifier.padding(8.dp),
-        shape = RoundedCornerShape(9.dp),
-        onClick = {
-            if (viewModel.uiState.value.measuredWaveList.isNotEmpty()) {
-                viewModel.clearMeasuredWaveData()
-            }
-        },
-        elevation = ButtonDefaults.buttonElevation(1.dp)
-    ) {
-        Text(text = "Clear")
+fun ClearButton(viewModel: SensorViewModel) {
+    var showDialog by remember { mutableStateOf(false) }
+
+    Column {
+        Button(
+            modifier = Modifier.padding(8.dp),
+            shape = RoundedCornerShape(9.dp),
+            onClick = { showDialog = true },
+            elevation = ButtonDefaults.buttonElevation(1.dp)
+        ) {
+            Text("Clear")
+        }
+
+        if (showDialog) {
+            AlertConfirm(
+                onDismissRequest = { showDialog = false },
+                onConfirmation = {
+                    viewModel.clearMeasuredWaveData()
+                    showDialog = false
+                },
+                dialogTitle = "Clear Data?",
+                dialogText = "Are you sure you want to delete all recorded wave data?",
+                icon = Icons.Default.Warning
+            )
+        }
     }
 }
 
 // Display data in graph and text
 @Composable
 fun ShowRecordData(
-    uiState: WaveUiState
+    uiState: WaveUiState,
+    viewModel: SensorViewModel
 ) {
     var displayOptions by remember { mutableStateOf(GraphDisplayOptions()) }
+    val confidence by viewModel.bigWaveConfidence.collectAsState()
 
     val height = uiState.height
     val period = uiState.period
@@ -188,16 +209,68 @@ fun ShowRecordData(
                 listOf("Height", "Period", "Direction"),
                 listOf("ft", "s", "°")
             )
+            if (displayOptions.showForecast && confidence > 0.8f) {
+                Text(
+                    text = "Big wave on it's way! (Confidence: ${(confidence * 100).toInt()}%)",
+                    color = Color.Red,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             // Filter Graph display
             DropDownFilterGraphView(displayOptions, onUpdate = { displayOptions = it })
 
-            Box(
-                modifier = Modifier
-                    .height(300.dp)
-                    .fillMaxWidth()
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 SensorGraph(uiState.measuredWaveList, displayOptions)
             }
         }
+    }
+}
+
+@Composable
+fun FakeRecordScreen(viewModel: FakeSensorViewModel = viewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+    var isRecording by remember { mutableStateOf(false) }
+
+    var displayOptions by remember { mutableStateOf(GraphDisplayOptions()) }
+    val confidence by viewModel.bigWaveConfidence.collectAsState()
+
+    val height = uiState.height
+    val period = uiState.period
+    val direction = uiState.direction
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        WaveDataCard(
+            listOf(height, period, direction),
+            listOf("Height", "Period", "Direction"),
+            listOf("ft", "s", "°")
+        )
+        if (displayOptions.showForecast && confidence > 0.8f) {
+            Text(
+                text = "Big wave on it's way! (Confidence: ${(confidence * 100).toInt()}%)",
+                color = Color.Red,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = {
+                isRecording = !isRecording
+                if (isRecording) viewModel.startSimulation()
+                else viewModel.stopSimulation()
+            }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
+                Text(if (isRecording) "Pause" else "Record")
+            }
+
+            Button(onClick = {
+                viewModel.clearSimulation()
+                isRecording = false
+            }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
+                Text("Clear")
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        SensorGraph(uiState.measuredWaveList, display = GraphDisplayOptions(true, true, true, false))
     }
 }

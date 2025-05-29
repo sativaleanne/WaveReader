@@ -35,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import com.example.wavereader.model.MeasuredWaveData
 import java.time.LocalDateTime
 
@@ -47,7 +48,6 @@ data class GraphLine(
 
 /**
 * One Graph to rule them all
-* TODO: Fix Scroll Behavior
  */
 @Composable
 fun Graph(
@@ -55,95 +55,112 @@ fun Graph(
     timeLabels: List<String>,
     isInteractive: Boolean = true,
     isScrollable: Boolean = false,
-    isXLabeled: Boolean = true
+    isXLabeled: Boolean = true,
+    forecastIndex: Int = -1
 ) {
     var scrollOffset by remember { mutableFloatStateOf(0f) }
-    val pointSpacing = 40f
-    val graphWidth = (lines.firstOrNull()?.values?.size ?: 0) * pointSpacing
     var canvasWidth by remember { mutableFloatStateOf(0f) }
-
     var selectedIndex by remember { mutableIntStateOf(-1) }
     var canvasSize by remember { mutableStateOf(Size.Zero) }
+
+    var userScrolling by remember { mutableStateOf(false) }
+
+    val pointSpacing = 40f
+    val dataPointCount = lines.firstOrNull()?.values?.size ?: 0
+    val graphWidth = dataPointCount * pointSpacing
 
     val dataSets = lines.map { it.values }
     val maxValues = lines.map { it.values.maxOrNull() ?: 1f }
     val colors = lines.map { it.color }
     val units = lines.map { it.unit }
 
-    LaunchedEffect(lines.firstOrNull()?.values?.size) {
-        if (isScrollable) {
+    LaunchedEffect(dataPointCount, canvasWidth, userScrolling) {
+        if (isScrollable && !userScrolling) {
             scrollOffset = (graphWidth - canvasWidth).coerceAtLeast(0f)
         }
     }
 
-    Box(
-        modifier = Modifier
-        .height(300.dp)
-        .clip(RectangleShape)
-        .background(Color.White)
-        .padding(horizontal = 8.dp, vertical = 12.dp)
-        .then(
-            if (isScrollable || isInteractive) Modifier.pointerInput(lines.firstOrNull()?.values?.size) {
-                detectDragGestures(
-                    onDragStart = { offset ->
-                        if (isInteractive) {
-                            val x = offset.x + if (isScrollable) scrollOffset else 0f
-                            selectedIndex = (x / pointSpacing).toInt().coerceIn(0, timeLabels.size - 1)
-                        }
-                    },
-                    onDrag = { change, dragAmount ->
-                        if (isScrollable) {
-                            val maxScroll = (graphWidth - canvasSize.width).coerceAtLeast(0f)
-                            scrollOffset = (scrollOffset - dragAmount.x).coerceIn(0f, maxScroll)
-                        }
-
-                        if (isInteractive) {
-                            val x = change.position.x + if (isScrollable) scrollOffset else 0f
-                            selectedIndex = (x / pointSpacing).toInt().coerceIn(0, timeLabels.size - 1)
-                        }
-                    },
-                    onDragEnd = {
-                        if (isInteractive) selectedIndex = -1
-                    }
-                )
-            } else Modifier
-        ),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // Graph Drawing Area
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .onSizeChanged { canvasWidth = it.width.toFloat() },
-            onDraw = {
-                canvasSize = size
+                .height(300.dp)
+                .clip(RectangleShape)
+                .background(Color.White)
+                .padding(horizontal = 8.dp, vertical = 12.dp)
+                .then(
+                    if (isScrollable || isInteractive) Modifier.pointerInput(dataPointCount) {
+                        detectDragGestures(
+                            onDragStart = { offset ->
+                                userScrolling = true
+                                if (isInteractive) {
+                                    val x = offset.x + if (isScrollable) scrollOffset else 0f
+                                    selectedIndex = (x / pointSpacing).toInt().coerceIn(0, timeLabels.size - 1)
+                                }
+                            },
+                            onDrag = { change, dragAmount ->
+                                if (isScrollable) {
+                                    val maxScroll = (graphWidth - canvasSize.width).coerceAtLeast(0f)
+                                    scrollOffset = (scrollOffset - dragAmount.x).coerceIn(0f, maxScroll)
+                                }
 
-                with(GraphPainter) {
-                    drawGridLines()
-                    drawYLabels(maxValues, units)
-                    if (isScrollable) drawContext.canvas.save()
-                    drawContext.canvas.translate(if (isScrollable) -scrollOffset else 0f, 0f)
-                    if(isXLabeled) {
-                        drawXLabels(timeLabels)
+                                if (isInteractive) {
+                                    val x = change.position.x + if (isScrollable) scrollOffset else 0f
+                                    selectedIndex = (x / pointSpacing).toInt().coerceIn(0, timeLabels.size - 1)
+                                }
+                            },
+                            onDragEnd = {
+                                if (isInteractive) selectedIndex = -1
+                                userScrolling = false
+                            }
+                        )
+                    } else Modifier
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onSizeChanged {
+                        canvasWidth = it.width.toFloat()
+                        canvasSize = it.toSize()
+                    },
+                onDraw = {
+                    with(GraphPainter) {
+                        drawGridLines()
+                        drawYLabels(maxValues, units)
+
+                        if (isScrollable) drawContext.canvas.save()
+                        drawContext.canvas.translate(if (isScrollable) -scrollOffset else 0f, 0f)
+
+                        if (isXLabeled) {
+                            drawXLabels(timeLabels, pointSpacing)
+                        }
+
+                        plotLines(dataSets, maxValues, colors, selectedIndex, pointSpacing, size.height)
+                        drawCoordinate(selectedIndex, dataPointCount, pointSpacing)
+
+                        if (forecastIndex != -1) {
+                            drawForecastLine(forecastIndex, pointSpacing)
+                        }
+
+                        if (isScrollable) drawContext.canvas.restore()
                     }
-                    plotLines(
-                        dataSets = dataSets,
-                        maxValues = maxValues,
-                        colors = colors,
-                        selectedIndex = selectedIndex
-                    )
-                    drawCoordinate(selectedIndex, timeLabels.size)
                 }
+            )
+        }
 
-                if (isScrollable) drawContext.canvas.restore()
-            })
-    }
+        Spacer(Modifier.height(12.dp))
 
-    if (selectedIndex != -1) {
-        DrawCoordinateKey(selectedIndex, lines, timeLabels)
+        if (selectedIndex != -1) {
+            DrawCoordinateKey(selectedIndex, lines, timeLabels)
+        }
+
+        GraphLegend(lines)
     }
-    // TODO: FIX LAYOUT
-    GraphLegend(lines)
 }
+
+
 
 // Coordinate Input Selection
 @Composable
@@ -152,17 +169,18 @@ fun DrawCoordinateKey(
     lines: List<GraphLine>,
     timeLabels: List<String>
 ) {
-    Box(
-        modifier = Modifier
-            .background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(8.dp))
-            .padding(6.dp)
-            .shadow(1.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.Start) {
-            Text("Time: ${timeLabels.getOrNull(selectedIndex) ?: "-"}", fontSize = 12.sp)
-            lines.forEach { line ->
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(top = 8.dp)
+    ){
+        lines.forEach { line ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    "${line.label}: ${line.values.getOrNull(selectedIndex) ?: "-"} ${line.unit}",
+                    "${line.label}:",
+                    color = line.color,
+                    fontSize = 12.sp
+                )
+                Text(
+                    "${line.values.getOrNull(selectedIndex) ?: "-"} ${line.unit}",
                     color = line.color,
                     fontSize = 12.sp
                 )

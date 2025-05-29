@@ -94,7 +94,7 @@ fun HistoryScreen(navController: NavHostController) {
 fun DropDownFilterButton(viewModel: HistoryViewModel) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        Button(onClick = { expanded = !expanded }) {
+        Button(onClick = { expanded = !expanded }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
             Text("Filter")
             Icon(
                 if (!expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
@@ -128,7 +128,7 @@ fun DropDownExportButton(context: Context, historyData: List<HistoryRecord>) {
     var expanded by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.padding(8.dp)) {
-        Button(onClick = { expanded = !expanded }) {
+        Button(onClick = { expanded = !expanded }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
             Text("Export")
             Icon(
                 if (!expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
@@ -153,11 +153,10 @@ fun HistoryCard(
     isExpanded: Boolean,
     onToggle: () -> Unit
 ) {
-    Card(
+    ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.LightGray)
     ) {
         Column(modifier = Modifier.padding(8.dp)) {
             Row(
@@ -199,12 +198,11 @@ fun HistoryCard(
 }
 
 // Summary Graph and view
-// TODO: X AXIS
 @Composable
 fun SummaryDisplay( historyData: List<HistoryRecord> ) {
-    val summaryData = historyData.mapNotNull { record ->
+    val summaryData = historyData.mapIndexedNotNull { index, record ->
         val points = record.dataPoints
-        if (points.isEmpty()) return@mapNotNull null
+        if (points.isEmpty()) return@mapIndexedNotNull null
 
         val avgHeight = points.map { it.height }.average().toFloat()
         val avgPeriod = points.map { it.period }.average().toFloat()
@@ -214,17 +212,13 @@ fun SummaryDisplay( historyData: List<HistoryRecord> ) {
             waveHeight = avgHeight,
             wavePeriod = avgPeriod,
             waveDirection = avgDirection,
-            time = 0f
+            time = index.toFloat()
         )
     }
-    Text("Summary of All Sessions", style = MaterialTheme.typography.titleMedium)
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(300.dp)
-            .padding(top = 8.dp)
-    ) {
-        HistoryGraph(waveData = summaryData)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text("Summary of All Sessions", style = MaterialTheme.typography.titleMedium)
+        HistoryGraph(waveData = summaryData, isInteractive = true)
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 

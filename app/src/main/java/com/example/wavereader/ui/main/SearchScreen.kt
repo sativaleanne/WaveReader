@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,7 +50,8 @@ import com.example.wavereader.R
 import com.example.wavereader.model.ApiVariable
 import com.example.wavereader.model.WaveApiQuery
 import com.example.wavereader.model.WaveDataResponse
-import com.example.wavereader.ui.components.DropDownFilterSearchButton
+import com.example.wavereader.model.FilterPreset
+import com.example.wavereader.ui.components.DropDownFilterSearchPresets
 import com.example.wavereader.ui.components.WaveDataCard
 import com.example.wavereader.ui.graph.ServiceGraph
 import com.example.wavereader.viewmodels.LocationViewModel
@@ -74,8 +77,8 @@ fun SearchDataScreen(
 
     var isMapExpanded by remember { mutableStateOf(false) }
 
-    val allVariables = ApiVariable.entries.toList()
-    var selectedVariables by remember { mutableStateOf(setOf<ApiVariable>()) }
+    var selectedPreset by remember { mutableStateOf(FilterPreset.Wave) }
+    var selectedVariables by remember { mutableStateOf(selectedPreset.variables) }
 
 
     Column(
@@ -134,12 +137,15 @@ fun SearchDataScreen(
         }
 
         // Search + Filters Button
-        DropDownFilterSearchButton(
-            allVariables = allVariables,
-            selectedVariables = selectedVariables,
-            onUpdate = { selectedVariables = it }
+        DropDownFilterSearchPresets(
+            selectedPreset = selectedPreset,
+            onPresetSelected = {
+                selectedPreset = it
+                selectedVariables = it.variables
+            }
         )
-        Button(onClick = {
+        Button(
+            onClick = {
             coordinates?.let { (lat, lon) ->
                 val query = WaveApiQuery(
                     latitude = lat,
@@ -151,7 +157,10 @@ fun SearchDataScreen(
                 )
                 serviceViewModel.fetchWaveData(query)
             }
-        }) {
+        },
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
+            enabled = coordinates != null
+        ) {
             Text("Search")
         }
         // Display Data or current state of searching data
@@ -240,19 +249,16 @@ fun SearchResultScreen(
                         listOf("ft", "s", "°")
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .height(300.dp)
-                        .fillMaxWidth()
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
                     val hourly = waveData.hourly
                     if (hourly?.time?.isNotEmpty() == true) {
                         ServiceGraph(hourly)
                     } else {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
                         Text("No graph data available.")
                     }
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

@@ -16,6 +16,7 @@ import com.example.wavereader.utils.calculateWaveDirection
 import com.example.wavereader.utils.computeSpectralDensity
 import com.example.wavereader.utils.computeWaveMetricsFromSpectrum
 import com.example.wavereader.utils.getFft
+import com.example.wavereader.utils.nextBigWaveConfidence
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,7 +27,6 @@ import kotlinx.coroutines.flow.update
 * Resources: For calculations and data processing
  * https://www.ndbc.noaa.gov/faq/wavecalc.shtml
  * https://www.ndbc.noaa.gov/wavemeas.pdf
-* TODO: Update with predictions
  */
 data class WaveUiState(
         val measuredWaveList: List<MeasuredWaveData> = emptyList(),
@@ -39,6 +39,9 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         private val _uiState = MutableStateFlow(WaveUiState())
         val uiState: StateFlow<WaveUiState> = _uiState.asStateFlow()
+
+        private val _bigWaveConfidence = MutableStateFlow(0f)
+        val bigWaveConfidence: StateFlow<Float> = _bigWaveConfidence.asStateFlow()
 
         private val sensorManager = application.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         private val recordSessionRepository = RecordSessionRepository()
@@ -142,6 +145,9 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 } ?: fftDirection
 
                 updateMeasuredWaveData(height, period, direction, elapsedTime)
+                val recent = _uiState.value.measuredWaveList
+                val confidence = nextBigWaveConfidence(recent)
+                _bigWaveConfidence.value = confidence
         }
 
         private fun updateMeasuredWaveData(height: Float, period: Float, direction: Float, time: Float) {
@@ -227,6 +233,7 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 }
                 verticalAcceleration.clear()
                 horizontalAcceleration.clear()
+                _bigWaveConfidence.value = 0f
                 lastTimestamp = 0L
         }
 

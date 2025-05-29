@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 object GraphPainter {
 
@@ -22,17 +23,17 @@ object GraphPainter {
         }
     }
 
-    // TODO: Adjust Labels to hug edge of graph
     fun DrawScope.drawYLabels(maxValues: List<Float>, units: List<String>) {
         val positions = units.indices.map { i -> size.width - 160f + i * 60f }
-        val yStep = size.height / 8
+        val yStep = size.height / 6
         val labelPadding = 2.dp.toPx()
 
-        for (i in 0..7) {
+        for (i in 0..6) {
             val y = size.height - (yStep * i)
             maxValues.forEachIndexed { index, maxVal ->
+                val labelValue = (maxVal / 6f * i)
                 drawContext.canvas.nativeCanvas.drawText(
-                    String.format("%.1f", (maxVal / 6 * i).toDouble()) + units[index],
+                    String.format(Locale.US, "%.1f", labelValue) + units[index],
                     positions[index],
                     y - labelPadding,
                     Paint().apply { textSize = 24f; color = android.graphics.Color.BLACK }
@@ -41,15 +42,58 @@ object GraphPainter {
         }
     }
 
-    fun DrawScope.drawXLabels(timeLabels: List<String>) {
-        val xStep = size.width / (timeLabels.size).coerceAtLeast(1)
-        val labelPadding = 12.dp.toPx()
+    fun DrawScope.drawForecastLine(index: Int, pointSpacing: Float) {
+        val x = index * pointSpacing
+        drawLine(
+            color = Color.Red,
+            start = Offset(x, 0f),
+            end = Offset(x, size.height),
+            strokeWidth = 4f
+        )
+    }
 
+    fun DrawScope.plotLines(
+        dataSets: List<List<Float>>,
+        maxValues: List<Float>,
+        colors: List<Color>,
+        selectedIndex: Int,
+        pointSpacing: Float,
+        graphHeight: Float
+    ) {
+        dataSets.forEachIndexed { index, data ->
+            if (data.isNotEmpty()) {
+                val normalized = data.map { (it / (maxValues[index] + 0.01f)) * graphHeight }
+
+                for (i in 1 until normalized.size) {
+                    drawLine(
+                        color = colors[index],
+                        start = Offset((i - 1) * pointSpacing, graphHeight - normalized[i - 1]),
+                        end = Offset(i * pointSpacing, graphHeight - normalized[i]),
+                        strokeWidth = 4f
+                    )
+                }
+
+                if (selectedIndex in data.indices) {
+                    drawCircle(
+                        color = colors[index],
+                        radius = 8f,
+                        center = Offset(
+                            selectedIndex * pointSpacing,
+                            graphHeight - normalized[selectedIndex]
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    fun DrawScope.drawXLabels(timeLabels: List<String>, pointSpacing: Float) {
+        val labelPadding = 12.dp.toPx()
         timeLabels.forEachIndexed { index, label ->
             if (index % 2 == 0) {
                 drawContext.canvas.nativeCanvas.drawText(
                     label,
-                    xStep * index,
+                    index * pointSpacing,
                     size.height + labelPadding,
                     Paint().apply {
                         textAlign = Paint.Align.CENTER
@@ -60,48 +104,11 @@ object GraphPainter {
         }
     }
 
-    fun DrawScope.plotLines(
-        dataSets: List<List<Float>>,
-        maxValues: List<Float>,
-        colors: List<Color>,
-        selectedIndex: Int
-    ) {
-        val pointCount = dataSets.firstOrNull()?.size ?: 1
-        val xStep = size.width / pointCount.toFloat()
-        val graphHeight = size.height
-
-        dataSets.forEachIndexed { index, data ->
-            if (data.isNotEmpty()) {
-                val normalizedData = data.map { (it / (maxValues[index] + 0.01f)) * graphHeight }
-
-                for (i in 1 until normalizedData.size) {
-                    drawLine(
-                        color = colors[index],
-                        start = Offset((i - 1) * xStep, graphHeight - normalizedData[i - 1]),
-                        end = Offset(i * xStep, graphHeight - normalizedData[i]),
-                        strokeWidth = 4f
-                    )
-                }
-
-                if (selectedIndex in data.indices) {
-                    drawCircle(
-                        color = colors[index],
-                        radius = 8f,
-                        center = Offset(selectedIndex * xStep, graphHeight - normalizedData[selectedIndex])
-                    )
-                }
-            }
-        }
-    }
-
-    fun DrawScope.plotForecastLines() {
-        // TODO
-    }
-
-    fun DrawScope.drawCoordinate(selectedIndex: Int, totalLabels: Int) {
+    fun DrawScope.drawCoordinate(selectedIndex: Int, totalPoints: Int, pointSpacing: Float) {
         if (selectedIndex != -1) {
-            val selectedX = selectedIndex * (size.width / totalLabels)
-            drawLine(Color.Red, Offset(selectedX, 0f), Offset(selectedX, size.height), strokeWidth = 2f)
+            val x = selectedIndex * pointSpacing
+            drawLine(Color.Red, Offset(x, 0f), Offset(x, size.height), strokeWidth = 2f)
         }
     }
 }
+

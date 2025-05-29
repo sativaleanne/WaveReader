@@ -1,17 +1,23 @@
 package com.example.wavereader.ui.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.wavereader.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
 
@@ -36,8 +42,17 @@ fun RegisterScreen(auth: FirebaseAuth, onBack: () -> Unit, onSuccess: () -> Unit
         IconButton(onClick = onBack, modifier = Modifier.align(Alignment.Start)) {
             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
         }
+        Image(
+            painter = painterResource(id = R.drawable.wavereadericoncropped),
+            contentScale = ContentScale.Crop,
+            contentDescription = "App Logo",
+            modifier = Modifier
+                .size(150.dp)
+                .clip(CircleShape)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
 
-        Text("Welcome! Register to get Started", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Welcome! Register to get Started", fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -108,6 +123,7 @@ fun RegisterScreen(auth: FirebaseAuth, onBack: () -> Unit, onSuccess: () -> Unit
                         }
                     }
             },
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
             modifier = Modifier.fillMaxWidth(),
             enabled = !isLoading
         ) {

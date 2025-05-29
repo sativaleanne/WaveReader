@@ -33,20 +33,6 @@ fun movingAverage(data: List<Float>, window: Int): List<Float> {
     return data.windowed(window, step = 1) { it.average().toFloat() }
 }
 
-///**
-//TODO: Not Sure if needed.
-// * Describes the trend direction based on a threshold.
-// * */
-//fun trendDirection(data: List<Float>, threshold: Float = 0.1f): String {
-//    if (data.size < 2) return "N/A"
-//    val delta = data.last() - data.first()
-//    return when {
-//        delta > threshold -> "Increasing"
-//        delta < -threshold -> "Decreasing"
-//        else -> "Stable"
-//    }
-//}
-
 /**
  * Linear regression slope
  * */

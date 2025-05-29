@@ -14,13 +14,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 
-@Immutable
-data class ExtendedColorScheme(
-    val customColor1: ColorFamily,
-    val customColor2: ColorFamily,
-    val customColor3: ColorFamily,
-)
-
 private val lightScheme = lightColorScheme(
     primary = primaryLight,
     onPrimary = onPrimaryLight,
@@ -249,132 +242,6 @@ private val highContrastDarkColorScheme = darkColorScheme(
     surfaceContainerHighest = surfaceContainerHighestDarkHighContrast,
 )
 
-val extendedLight = ExtendedColorScheme(
-  customColor1 = ColorFamily(
-  customColor1Light,
-  onCustomColor1Light,
-  customColor1ContainerLight,
-  onCustomColor1ContainerLight,
-  ),
-  customColor2 = ColorFamily(
-  customColor2Light,
-  onCustomColor2Light,
-  customColor2ContainerLight,
-  onCustomColor2ContainerLight,
-  ),
-  customColor3 = ColorFamily(
-  customColor3Light,
-  onCustomColor3Light,
-  customColor3ContainerLight,
-  onCustomColor3ContainerLight,
-  ),
-)
-
-val extendedDark = ExtendedColorScheme(
-  customColor1 = ColorFamily(
-  customColor1Dark,
-  onCustomColor1Dark,
-  customColor1ContainerDark,
-  onCustomColor1ContainerDark,
-  ),
-  customColor2 = ColorFamily(
-  customColor2Dark,
-  onCustomColor2Dark,
-  customColor2ContainerDark,
-  onCustomColor2ContainerDark,
-  ),
-  customColor3 = ColorFamily(
-  customColor3Dark,
-  onCustomColor3Dark,
-  customColor3ContainerDark,
-  onCustomColor3ContainerDark,
-  ),
-)
-
-val extendedLightMediumContrast = ExtendedColorScheme(
-  customColor1 = ColorFamily(
-  customColor1LightMediumContrast,
-  onCustomColor1LightMediumContrast,
-  customColor1ContainerLightMediumContrast,
-  onCustomColor1ContainerLightMediumContrast,
-  ),
-  customColor2 = ColorFamily(
-  customColor2LightMediumContrast,
-  onCustomColor2LightMediumContrast,
-  customColor2ContainerLightMediumContrast,
-  onCustomColor2ContainerLightMediumContrast,
-  ),
-  customColor3 = ColorFamily(
-  customColor3LightMediumContrast,
-  onCustomColor3LightMediumContrast,
-  customColor3ContainerLightMediumContrast,
-  onCustomColor3ContainerLightMediumContrast,
-  ),
-)
-
-val extendedLightHighContrast = ExtendedColorScheme(
-  customColor1 = ColorFamily(
-  customColor1LightHighContrast,
-  onCustomColor1LightHighContrast,
-  customColor1ContainerLightHighContrast,
-  onCustomColor1ContainerLightHighContrast,
-  ),
-  customColor2 = ColorFamily(
-  customColor2LightHighContrast,
-  onCustomColor2LightHighContrast,
-  customColor2ContainerLightHighContrast,
-  onCustomColor2ContainerLightHighContrast,
-  ),
-  customColor3 = ColorFamily(
-  customColor3LightHighContrast,
-  onCustomColor3LightHighContrast,
-  customColor3ContainerLightHighContrast,
-  onCustomColor3ContainerLightHighContrast,
-  ),
-)
-
-val extendedDarkMediumContrast = ExtendedColorScheme(
-  customColor1 = ColorFamily(
-  customColor1DarkMediumContrast,
-  onCustomColor1DarkMediumContrast,
-  customColor1ContainerDarkMediumContrast,
-  onCustomColor1ContainerDarkMediumContrast,
-  ),
-  customColor2 = ColorFamily(
-  customColor2DarkMediumContrast,
-  onCustomColor2DarkMediumContrast,
-  customColor2ContainerDarkMediumContrast,
-  onCustomColor2ContainerDarkMediumContrast,
-  ),
-  customColor3 = ColorFamily(
-  customColor3DarkMediumContrast,
-  onCustomColor3DarkMediumContrast,
-  customColor3ContainerDarkMediumContrast,
-  onCustomColor3ContainerDarkMediumContrast,
-  ),
-)
-
-val extendedDarkHighContrast = ExtendedColorScheme(
-  customColor1 = ColorFamily(
-  customColor1DarkHighContrast,
-  onCustomColor1DarkHighContrast,
-  customColor1ContainerDarkHighContrast,
-  onCustomColor1ContainerDarkHighContrast,
-  ),
-  customColor2 = ColorFamily(
-  customColor2DarkHighContrast,
-  onCustomColor2DarkHighContrast,
-  customColor2ContainerDarkHighContrast,
-  onCustomColor2ContainerDarkHighContrast,
-  ),
-  customColor3 = ColorFamily(
-  customColor3DarkHighContrast,
-  onCustomColor3DarkHighContrast,
-  customColor3ContainerDarkHighContrast,
-  onCustomColor3ContainerDarkHighContrast,
-  ),
-)
-
 @Immutable
 data class ColorFamily(
     val color: Color,
@@ -391,7 +258,7 @@ val unspecified_scheme = ColorFamily(
 fun WaveReaderTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable() () -> Unit
 ) {
   val colorScheme = when {

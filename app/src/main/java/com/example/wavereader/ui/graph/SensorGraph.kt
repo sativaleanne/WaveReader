@@ -4,10 +4,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import com.example.wavereader.model.GraphDisplayOptions
 import com.example.wavereader.model.MeasuredWaveData
+import com.example.wavereader.utils.predictNextBigWave
 
 /*
 * Sensor Graph setup
-* TODO: Fix Scroll to stick to far end and add forecasts
  */
 @Composable
 fun SensorGraph(
@@ -24,9 +24,10 @@ fun SensorGraph(
     val forecastLines = mutableListOf<GraphLine>()
     val timeValues = waveData.map { it.time }.toMutableList()
 
-    // TODO: Forecast values
-    if (display.showForecast) {
-        //TODO
+    val forecastIndex = if (display.showForecast && predictNextBigWave(waveData)) {
+        waveData.lastIndex
+    } else {
+        -1
     }
 
     // Limit X axis to 10
@@ -48,6 +49,7 @@ fun SensorGraph(
         lines = mainLines,
         timeLabels = timeLabels,
         isInteractive = true,
-        isScrollable = true
+        isScrollable = true,
+        forecastIndex = forecastIndex
     )
 }

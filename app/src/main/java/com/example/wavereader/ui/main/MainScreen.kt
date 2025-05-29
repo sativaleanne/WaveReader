@@ -29,9 +29,11 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -62,7 +64,10 @@ import com.example.wavereader.R
 import com.example.wavereader.viewmodels.LocationViewModel
 import com.example.wavereader.viewmodels.SensorViewModel
 
-enum class MainScreenTab { Record, Search }
+enum class MainScreenTab(val label: String) {
+    Measure("Measure Waves"),
+    Search("Search Waves")
+}
 
 /*
 * Main Screen controls the main apps navigation within the structured Scaffolding
@@ -74,6 +79,7 @@ fun MainScreen(
     viewModel: SensorViewModel,
     onSignOut: () -> Unit,
     onHistoryNavigate: () -> Unit,
+    onInfoNavigate: () -> Unit,
     isGuest: Boolean
 ) {
     val navController = rememberNavController()
@@ -83,13 +89,11 @@ fun MainScreen(
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentScreen = backStackEntry?.destination?.route?.let { route ->
         MainScreenTab.entries.find { it.name == route }
-    } ?: MainScreenTab.Record // Default to Record
+    } ?: MainScreenTab.Measure // Default to Record
 
     //TODO: CHange to use MainScreenTab
-    val tabs = listOf(MainScreenTab.Record, MainScreenTab.Search)
+    val tabs = listOf(MainScreenTab.Measure, MainScreenTab.Search)
     val selectedTabIndex = rememberSaveable { mutableIntStateOf(tabs.indexOf(currentScreen)) }
-
-    val showInfoCard = remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -99,13 +103,12 @@ fun MainScreen(
                         Text(text = stringResource(R.string.titlename))
                     },
                     actions = {
-                        DropDownMenuButton( isGuest, showInfoCard, onHistoryNavigate, onSignOut)
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors()
+                        DropDownMenuButton( isGuest, onInfoNavigate, onHistoryNavigate, onSignOut)
+                    }
                 )
                 TabRow(
                     selectedTabIndex = selectedTabIndex.intValue,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     tabs.forEachIndexed { index, screen ->
                         Tab(
@@ -120,10 +123,10 @@ fun MainScreen(
                                     restoreState = true
                                 }
                             },
-                            text = { Text(screen.name) },
+                            text = { Text(screen.label) },
                             icon = {
                                 Icon(
-                                    imageVector = if (screen == MainScreenTab.Record) Icons.Default.PlayArrow else Icons.Default.Search,
+                                    imageVector = if (screen == MainScreenTab.Measure) Icons.Default.PlayArrow else Icons.Default.Search,
                                     contentDescription = screen.name
                                 )
                             },
@@ -135,15 +138,12 @@ fun MainScreen(
             }
         }
     ) { innerPadding ->
-        if (showInfoCard.value) {
-            ShowInfoDialog(showInfoCard = showInfoCard)
-        }
         NavHost(
             navController = navController,
-            startDestination = MainScreenTab.Record.name,
+            startDestination = MainScreenTab.Measure.name,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(MainScreenTab.Record.name) {
+            composable(MainScreenTab.Measure.name) {
                 RecordDataScreen(viewModel = viewModel, uiState = uiState, isGuest)
             }
             composable(MainScreenTab.Search.name) {
@@ -156,7 +156,7 @@ fun MainScreen(
 @Composable
 fun DropDownMenuButton(
     isGuest: Boolean,
-    showInfoCard: MutableState<Boolean>,
+    onInfoNavigate: () -> Unit,
     onHistoryNavigate: () -> Unit,
     onSignOut: () -> Unit
     ) {
@@ -182,121 +182,13 @@ fun DropDownMenuButton(
             DropdownMenuItem(
                 text = { Text("About") },
                 leadingIcon = { Icon(Icons.Default.Info, contentDescription = stringResource(R.string.informationbuttondescr)) },
-                onClick = {
-                    showInfoCard.value = true
-                }
+                onClick = onInfoNavigate
             )
             DropdownMenuItem(
                 text = { Text("Sign In/Out") },
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
                 onClick = onSignOut
             )
-        }
-    }
-}
-
-// Info on App use, sensors, and calculations
-//TODO: UPDATE
-@Composable
-fun ShowInfoDialog(showInfoCard: MutableState<Boolean>) {
-    Dialog(onDismissRequest = {showInfoCard.value = false}) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(500.dp)
-                .padding(8.dp),
-            shape = RoundedCornerShape(16.dp),
-        ) {
-            Column(modifier = Modifier
-                .verticalScroll(rememberScrollState())
-            ) {
-                Text(
-                    text = stringResource(R.string.info_sensor_header),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline
-                )
-                Text(
-                    text = stringResource(R.string.info_sensor_body),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.calculating_wave_height_title),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline
-                )
-                Text(
-                    text = stringResource(R.string.calculating_wave_height_body),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.calculating_wave_period_title),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline
-                )
-                Text(
-                    text = stringResource(R.string.calculating_wave_period_body),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.calculating_wave_direction_title),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline
-                )
-                Text(
-                    text = stringResource(R.string.calculating_wave_direction_body),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = stringResource(R.string.info_api_header),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                    fontWeight = FontWeight.Bold,
-                    textDecoration = TextDecoration.Underline
-                )
-                Text(
-                    text = stringResource(R.string.info_api_body),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .wrapContentSize(Alignment.Center),
-                    textAlign = TextAlign.Center,
-                )
-                TextButton(
-                    onClick = { showInfoCard.value = false },
-                    modifier = Modifier.padding(8.dp),
-                ) {
-                    Text(stringResource(R.string.dismiss_text))
-                }
-            }
         }
     }
 }

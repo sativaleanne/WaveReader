@@ -12,6 +12,7 @@ import com.example.wavereader.ui.main.HistoryScreen
 import com.example.wavereader.ui.auth.LoginScreen
 import com.example.wavereader.ui.auth.RegisterScreen
 import com.example.wavereader.ui.auth.StartScreen
+import com.example.wavereader.ui.main.InfoScreen
 import com.example.wavereader.ui.main.MainScreen
 import com.example.wavereader.viewmodels.SensorViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -26,6 +27,7 @@ sealed class AppRoute(val route: String) {
     data object Register : AppRoute("register")
     data object Main : AppRoute("main")
     data object History : AppRoute("history")
+    data object Info : AppRoute("info")
 }
 
 sealed class AppFlow {
@@ -114,6 +116,9 @@ fun WaveApp(viewModel: SensorViewModel) {
                 onHistoryNavigate = {
                     navController.navigate(AppRoute.History.route)
                 },
+                onInfoNavigate = {
+                    navController.navigate(AppRoute.Info.route)
+                },
                 isGuest = appFlow.value is AppFlow.Guest
             )
         }
@@ -121,6 +126,11 @@ fun WaveApp(viewModel: SensorViewModel) {
         // History Page
         composable(AppRoute.History.route) {
             HistoryScreen(navController = navController)
+        }
+
+        // Info Page
+        composable(AppRoute.Info.route) {
+            InfoScreen(navController = navController)
         }
     }
 }
