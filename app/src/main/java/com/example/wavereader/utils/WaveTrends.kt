@@ -33,6 +33,17 @@ fun movingAverage(data: List<Float>, window: Int): List<Float> {
     return data.windowed(window, step = 1) { it.average().toFloat() }
 }
 
+/** Median filter for spike rejection */
+fun medianFilter(data: List<Float>, window: Int): List<Float> {
+    if (data.size < window) return data
+    return data.windowed(window, 1) { it.sorted()[window / 2] }
+}
+
+/** smooth output height/period*/
+fun smoothOutput(previous: Float?, new: Float, alpha: Float = 0.9f): Float {
+    return if (previous == null) new else alpha * previous + (1 - alpha) * new
+}
+
 /**
  * Linear regression slope
  * */

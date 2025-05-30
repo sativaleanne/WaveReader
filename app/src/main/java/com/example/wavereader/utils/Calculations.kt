@@ -143,3 +143,30 @@ fun computeWaveMetricsFromSpectrum(m0: Float, m1: Float, m2: Float): Triple<Floa
     val zeroCrossingPeriod = if (m2 != 0f) sqrt(m0 / m2) else 0f
     return Triple(significantHeight, avgPeriod, zeroCrossingPeriod)
 }
+
+fun estimateZeroCrossingPeriod(signal: List<Float>, samplingRate: Float): Float {
+    val zeroCrossings = mutableListOf<Int>()
+
+    for (i in 1 until signal.size) {
+        val prev = signal[i - 1]
+        val curr = signal[i]
+        if (prev < 0 && curr >= 0) {  // upward zero-crossing
+            zeroCrossings.add(i)
+        }
+    }
+
+    if (zeroCrossings.size < 2) return Float.NaN
+
+    val intervals = zeroCrossings.zipWithNext { a, b -> b - a }
+    val averageSamples = intervals.average().toFloat()
+    return averageSamples / samplingRate  // period in seconds
+}
+
+fun highPassFilter(data: List<Float>, windowSize: Int): List<Float> {
+    if (data.size < windowSize) return data
+    val rollingAvg = data.windowed(windowSize, 1) { it.average().toFloat() }
+    return data.drop(windowSize - 1).mapIndexed { i, value ->
+        val avg = rollingAvg.getOrElse(i) { 0f }
+        value - avg
+    }
+}

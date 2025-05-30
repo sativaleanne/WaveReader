@@ -187,7 +187,10 @@ fun DropDownMenuButton(
             DropdownMenuItem(
                 text = { Text("Sign In/Out") },
                 leadingIcon = { Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null) },
-                onClick = onSignOut
+                onClick = {
+                    expanded = false // Collapse the menu first
+                    onSignOut()
+                }
             )
         }
     }

@@ -15,12 +15,18 @@ import com.example.wavereader.utils.calculateSpectralMoments
 import com.example.wavereader.utils.calculateWaveDirection
 import com.example.wavereader.utils.computeSpectralDensity
 import com.example.wavereader.utils.computeWaveMetricsFromSpectrum
+import com.example.wavereader.utils.estimateZeroCrossingPeriod
 import com.example.wavereader.utils.getFft
+import com.example.wavereader.utils.highPassFilter
+import com.example.wavereader.utils.medianFilter
 import com.example.wavereader.utils.nextBigWaveConfidence
+import com.example.wavereader.utils.movingAverage
+import com.example.wavereader.utils.smoothOutput
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlin.math.sqrt
 
 /**
 * Sensor View Model for control the sensor manager and processing data
@@ -64,6 +70,7 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
         private val verticalAcceleration = mutableListOf<Float>()
         private val horizontalAcceleration = mutableListOf<Array<Float>>()
         private var filteredWaveDirection: Float? = null
+        private var previousFilteredDirection: Float? = null
 
         private var startTime = 0L
         private var dataProcessTime = 0L
@@ -84,11 +91,12 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                                 val gyroZ = event.values[2]
 
                                 val sensorHeading = getMagneticHeading()
-                                filteredWaveDirection = if (filteredWaveDirection == null) {
-                                        sensorHeading
+                                if (filteredWaveDirection == null) {
+                                        filteredWaveDirection = sensorHeading
                                 } else {
                                         val integratedAngle = filteredWaveDirection!! + Math.toDegrees(gyroZ * gyroscopeDt.toDouble()).toFloat()
-                                        alpha * integratedAngle + (1 - alpha) * sensorHeading
+                                        val blended = alpha * integratedAngle + (1 - alpha) * sensorHeading
+                                        filteredWaveDirection = (blended + 360) % 360  // Clamp to [0, 360)
                                 }
                         }
                         Sensor.TYPE_MAGNETIC_FIELD -> {
@@ -109,46 +117,78 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 val windowSize = 1024
                 val stepSize = 512
 
-                // Overlap data chunks
-                val segments = overlapData(verticalAcceleration, windowSize, stepSize)
+                // 1. High-pass filter to remove tilt/drift
+                val highPassed = highPassFilter(verticalAcceleration, 51)
 
-                val getHeights = mutableListOf<Float>()
-                val getPeriods = mutableListOf<Float>()
+                // 2. Segment data into overlapping windows
+                val segments = overlapData(highPassed, windowSize, stepSize)
+
+                val heights = mutableListOf<Float>()
+                val periods = mutableListOf<Float>()
 
                 for (segment in segments) {
-                        // Windowing to reduce spectral leakage
-                        val window = hanningWindow(segment)
-                        // FastFourier Transform
-                        val fft = getFft(window, window.size)
-                        // Convert FFT to spectral density
-                        val spectrum = computeSpectralDensity(fft, window.size)
+                        // 3. Reject low-energy or extreme motion windows
+                        val rms = sqrt(segment.sumOf { it.toDouble() * it.toDouble() } / segment.size)
+                        if (rms < 0.01f || rms > 10f) continue
 
-                        // Extract spectral moments: m0, m1, m2
+                        // 4. Median filter to remove outlier spikes
+                        val medianed = medianFilter(segment, 5)
+
+                        // 5. Smoothing to reduce high-frequency jitter
+                        val smoothed = movingAverage(medianed, 5)
+
+                        // 6. Windowing to reduce FFT edge effects
+                        val windowed = hanningWindow(smoothed)
+
+                        // 7. Compute frequency-domain features
+                        val fft = getFft(windowed, windowed.size)
+                        val spectrum = computeSpectralDensity(fft, windowed.size)
                         val (m0, m1, m2) = calculateSpectralMoments(spectrum, samplingRate)
-                        // Compute significant wave height, average period, zero-crossing period
-                        // TODO: Update needed variables
-                        val (sigWaveHeight, avePeriod, tZero) = computeWaveMetricsFromSpectrum(m0, m1, m2)
 
-                        getHeights.add(sigWaveHeight)
-                        getPeriods.add(avePeriod)
+                        // 8. Get spectral and zero-crossing wave periods
+                        val (sigWaveHeight, avePeriod, _) = computeWaveMetricsFromSpectrum(m0, m1, m2)
+                        val zeroCrossPeriod = estimateZeroCrossingPeriod(segment, samplingRate)
+
+                        // 9. Blend for stability
+                        val blendedPeriod = if (zeroCrossPeriod.isFinite()) {
+                                (avePeriod + zeroCrossPeriod) / 2f
+                        } else avePeriod
+
+                        // 10. Accept only valid values
+                        if (sigWaveHeight.isFinite() && blendedPeriod.isFinite()) {
+                                heights.add(sigWaveHeight)
+                                periods.add(blendedPeriod)
+                        }
                 }
-                // Final average values
-                val height = getHeights.average().toFloat()
-                val period = getPeriods.average().toFloat()
 
+                if (heights.isEmpty() || periods.isEmpty()) return
+
+                // 11. Smooth output across frames
+                val avgHeight = heights.average().toFloat()
+                val avgPeriod = periods.average().toFloat()
+                val smoothedHeight = smoothOutput(_uiState.value.height, avgHeight)
+                val smoothedPeriod = smoothOutput(_uiState.value.period, avgPeriod)
+
+                // 12. Compute wave direction using horizontal motion and gyroscope
                 val elapsedTime = (SystemClock.elapsedRealtime() - startTime) / 1000f
                 val accelX = horizontalAcceleration.map { it[0] }
                 val accelY = horizontalAcceleration.map { it[1] }
-                val fftDirection = calculateWaveDirection(accelX, accelY)
+                val rawFftDirection = calculateWaveDirection(accelX, accelY)
+                val fftDirection = previousFilteredDirection?.let {
+                        val delta = kotlin.math.abs(rawFftDirection - it)
+                        if (delta < 45f) smoothOutput(it, rawFftDirection, alpha = 0.8f) else it
+                } ?: rawFftDirection
+                previousFilteredDirection = fftDirection
+
                 val direction = filteredWaveDirection?.let {
                         (it + fftDirection) / 2f
                 } ?: fftDirection
 
-                updateMeasuredWaveData(height, period, direction, elapsedTime)
-                val recent = _uiState.value.measuredWaveList
-                val confidence = nextBigWaveConfidence(recent)
-                _bigWaveConfidence.value = confidence
+                // 13. Update UI and confidence state
+                updateMeasuredWaveData(smoothedHeight, smoothedPeriod, direction, elapsedTime)
+                _bigWaveConfidence.value = nextBigWaveConfidence(_uiState.value.measuredWaveList)
         }
+
 
         private fun updateMeasuredWaveData(height: Float, period: Float, direction: Float, time: Float) {
                 _uiState.update { state ->
@@ -178,14 +218,40 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         // Remove Gravity and filter to correct location and size
         private fun filterData(x: Float, y: Float, z: Float) {
+                // Gravity filtering
                 gravity[0] = alpha * gravity[0] + (1 - alpha) * x
                 gravity[1] = alpha * gravity[1] + (1 - alpha) * y
                 gravity[2] = alpha * gravity[2] + (1 - alpha) * z
 
-                val linear = arrayOf(x - gravity[0], y - gravity[1], z - gravity[2])
-                horizontalAcceleration.add(arrayOf(linear[0], linear[1]))
-                verticalAcceleration.add(linear[2])
+                val linearAcc = floatArrayOf(
+                        x - gravity[0],
+                        y - gravity[1],
+                        z - gravity[2]
+                )
 
+                // Use rotation matrix to remap linear acceleration to earth coordinates
+                val earthAcc = FloatArray(3)
+
+                if (SensorManager.getRotationMatrix(rotationMatrix, null, accelerometerReading, magnetometerReading)) {
+                        // Apply rotation matrix to get earth-relative acceleration
+                        SensorManager.remapCoordinateSystem(rotationMatrix, SensorManager.AXIS_X, SensorManager.AXIS_Z, rotationMatrix)
+
+                        // Matrix multiplication: rotationMatrix * linearAcc
+                        earthAcc[0] = rotationMatrix[0] * linearAcc[0] + rotationMatrix[1] * linearAcc[1] + rotationMatrix[2] * linearAcc[2]
+                        earthAcc[1] = rotationMatrix[3] * linearAcc[0] + rotationMatrix[4] * linearAcc[1] + rotationMatrix[5] * linearAcc[2]
+                        earthAcc[2] = rotationMatrix[6] * linearAcc[0] + rotationMatrix[7] * linearAcc[1] + rotationMatrix[8] * linearAcc[2]
+                } else {
+                        // fallback if rotation matrix not available
+                        earthAcc[0] = linearAcc[0]
+                        earthAcc[1] = linearAcc[1]
+                        earthAcc[2] = linearAcc[2]
+                }
+
+                // Add to buffers
+                horizontalAcceleration.add(arrayOf(earthAcc[0], earthAcc[1]))
+                verticalAcceleration.add(earthAcc[2]) // up
+
+                // Trim buffer size
                 if (verticalAcceleration.size > 2048) verticalAcceleration.removeAt(0)
                 if (horizontalAcceleration.size > 2048) horizontalAcceleration.removeAt(0)
         }
@@ -205,9 +271,9 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
         fun startSensors() {
                 startTime = SystemClock.elapsedRealtime()
-                gyroscope?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
-                accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
-                magnetometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_UI) }
+                gyroscope?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+                accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
+                magnetometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
         }
 
         fun stopSensors() { sensorManager.unregisterListener(this) }
