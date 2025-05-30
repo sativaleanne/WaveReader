@@ -1,1 +1,77 @@
-WaveReader is a mobile application for Android that will measure ocean waves. Using the built-in sensors like accelerometer and gyroscope in the phone, the app will calculate the height, direction and period of ocean waves to get a quick, real-time measurement for users out on the water. The application will also provide an option to enter a zipcode to send to a Marine Weather API to retrieve wave information for a given location. This application is a fun way for sailors and other mariners to measure waves in real time. They can also check the waves of a specific location. 
+# WaveReader
+
+WaveReader is an Android app that measures and visualizes ocean wave conditions in real time using your phone’s built-in motion sensors. It features live wave tracking, historical data access, and wave API data—making it a powerful tool for surfers, sailors, and ocean enthusiasts.
+
+---
+
+## Features
+
+- **Real-Time Measurement**  
+  Calculates wave height, period, and direction using the phone’s accelerometer, gyroscope, and magnetometer.
+- **Interactive Graphs**  
+  View wave data in real-time with a scrollable and zoomable custom graph that supports toggling lines for height, period, direction, and forecast prediction.
+- **Location-Based Wave Data**  
+  Search for wave forecasts by zip code or map, powered by the Marine Weather API and Androids Geocoding.
+- **History & Export**  
+  Save your measurements, filter, and export past data as CSV or JSON.
+- **Forecasts**  
+  Uses spectral and statistical analysis to predict the next big wave.
+- **User Accounts**  
+  Create an account to access all full features like data history and export tools.
+
+---
+
+## User Experience
+
+WaveReader is designed for both casual users and experienced mariners:
+
+- **Record Tab**: Measures waves in real-time from your current location. Customize the graph with filter options.
+- **Search Tab**: Explore wave data anywhere using zip code or map search, with toggles for different data types.
+- **History Page**: Review past sessions, filter by location or date, and view summary trends.
+
+---
+
+## Requirements
+
+- Android 8.0+
+- Device with:
+  - Accelerometer
+  - Gyroscope
+  - Magnetometer
+- Internet connection for API features and saving data
+- Firebase account for login features (optional)
+
+---
+
+## Core Technologies
+
+### Android & UI
+- **Kotlin**
+- **Jetpack Compose** – UI and Canvas-based graph rendering
+- **ViewModel + StateFlow** – Reactive architecture
+
+### Sensor & Signal Processing
+- **Android Sensor Framework** – Access motion sensors and orientation data
+- **JTransforms** – Fast Fourier Transform (FFT)
+
+### Location & Maps
+- **Google Maps SDK**
+- **Fused Location Provider**
+- **Android Geocoding API**
+
+### Networking & API
+- **Retrofit** – API calls to Marine Weather API
+- **kotlinx.serialization** – JSON parsing
+
+### Backend & Storage
+- **Firebase Authentication** – User login
+- **Cloud Firestore** – Save & load session history
+
+### Data Export
+- Built-in tools for CSV and JSON export via Android Storage Access Framework
+
+- [NDBC Wave Calculations](https://www.ndbc.noaa.gov/wave.shtml)
+- [JTransforms FFT Library](https://github.com/wendykierp/JTransforms)
+- [Marine Weather API](https://www.marineweatherapi.com/)
+- [Firebase Documentation](https://firebase.google.com/docs)
+
