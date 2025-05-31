@@ -117,44 +117,44 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                 val windowSize = 1024
                 val stepSize = 512
 
-                // 1. High-pass filter to remove tilt/drift
+                // High-pass filter removes tilt and drift
                 val highPassed = highPassFilter(verticalAcceleration, 51)
 
-                // 2. Segment data into overlapping windows
+                // Segment data into overlapping windows
                 val segments = overlapData(highPassed, windowSize, stepSize)
 
                 val heights = mutableListOf<Float>()
                 val periods = mutableListOf<Float>()
 
                 for (segment in segments) {
-                        // 3. Reject low-energy or extreme motion windows
+                        // Reject extremely high or low windows
                         val rms = sqrt(segment.sumOf { it.toDouble() * it.toDouble() } / segment.size)
                         if (rms < 0.01f || rms > 10f) continue
 
-                        // 4. Median filter to remove outlier spikes
+                        // Median filter to remove noise
                         val medianed = medianFilter(segment, 5)
 
-                        // 5. Smoothing to reduce high-frequency jitter
+                        // Smoothing
                         val smoothed = movingAverage(medianed, 5)
 
-                        // 6. Windowing to reduce FFT edge effects
+                        // Windowing
                         val windowed = hanningWindow(smoothed)
 
-                        // 7. Compute frequency-domain features
+                        // Compute frequency-domain features
                         val fft = getFft(windowed, windowed.size)
                         val spectrum = computeSpectralDensity(fft, windowed.size)
                         val (m0, m1, m2) = calculateSpectralMoments(spectrum, samplingRate)
 
-                        // 8. Get spectral and zero-crossing wave periods
+                        // Get spectral and zero-crossing wave periods
                         val (sigWaveHeight, avePeriod, _) = computeWaveMetricsFromSpectrum(m0, m1, m2)
                         val zeroCrossPeriod = estimateZeroCrossingPeriod(segment, samplingRate)
 
-                        // 9. Blend for stability
+                        // stability
                         val blendedPeriod = if (zeroCrossPeriod.isFinite()) {
                                 (avePeriod + zeroCrossPeriod) / 2f
                         } else avePeriod
 
-                        // 10. Accept only valid values
+                        // only valid stuff
                         if (sigWaveHeight.isFinite() && blendedPeriod.isFinite()) {
                                 heights.add(sigWaveHeight)
                                 periods.add(blendedPeriod)
@@ -163,13 +163,13 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
 
                 if (heights.isEmpty() || periods.isEmpty()) return
 
-                // 11. Smooth output across frames
+                // Smoothing
                 val avgHeight = heights.average().toFloat()
                 val avgPeriod = periods.average().toFloat()
                 val smoothedHeight = smoothOutput(_uiState.value.height, avgHeight)
                 val smoothedPeriod = smoothOutput(_uiState.value.period, avgPeriod)
 
-                // 12. Compute wave direction using horizontal motion and gyroscope
+                // wave direction using horizontal motion and gyroscope
                 val elapsedTime = (SystemClock.elapsedRealtime() - startTime) / 1000f
                 val accelX = horizontalAcceleration.map { it[0] }
                 val accelY = horizontalAcceleration.map { it[1] }
@@ -184,7 +184,7 @@ class SensorViewModel(application: Application) : AndroidViewModel(application),
                         (it + fftDirection) / 2f
                 } ?: fftDirection
 
-                // 13. Update UI and confidence state
+                // Update and check next big wave
                 updateMeasuredWaveData(smoothedHeight, smoothedPeriod, direction, elapsedTime)
                 _bigWaveConfidence.value = nextBigWaveConfidence(_uiState.value.measuredWaveList)
         }
