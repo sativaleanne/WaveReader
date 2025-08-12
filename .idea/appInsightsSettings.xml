@@ -22,7 +22,7 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.example.wavereader" />
+                  <option name="appId" value="com.maciel.wavereader" />
                   <option name="mobileSdkAppId" value="1:821146067095:android:32eadb7bf95e85c5e4c9d2" />
                   <option name="projectId" value="wavereaderproject" />
                   <option name="projectNumber" value="821146067095" />

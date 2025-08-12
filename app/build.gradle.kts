@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.wavereader"
+    namespace = "com.maciel.wavereader"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.wavereader"
+        applicationId = "com.maciel.wavereader"
         minSdk = 34
         targetSdk = 35
         versionCode = 1
