@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,18 +21,26 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -55,61 +66,130 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(navController: NavHostController) {
     val viewModel: HistoryViewModel = viewModel()
     val historyData by viewModel.historyData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val expandedItems by viewModel.expandedItems.collectAsState()
+    val isSelectionMode by viewModel.isSelectionMode.collectAsState()
+    val selectedItems by viewModel.selectedItems.collectAsState()
 
     val context = LocalContext.current
 
-    BackHandler { navController.popBackStack() }
+    BackHandler {
+        if (isSelectionMode) {
+            viewModel.clearSelection()
+        } else {
+            navController.popBackStack()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.setDefaultRecentFilter()
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.align(Alignment.Start)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("History") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Go Back"
+                        )
+                    }
+                })
         }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (isSelectionMode) {
+                SelectionTopBar(
+                    selectedCount = selectedItems.size,
+                    onCancel = { viewModel.clearSelection() },
+                    onDelete = { /* handle delete */ },
+                    onExport = { /* handle export */ }
+                )
+            } else {
+                // Buttons for filter, sort, or export
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    DropDownFilterButton(viewModel)
+                    DropDownExportButton(context, historyData)
+                }
+            }
 
-        Text("History", style = MaterialTheme.typography.titleLarge)
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            if (isLoading) {
 
-        // Buttons for filter, sort, or export
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            DropDownFilterButton(viewModel)
-            DropDownExportButton(context, historyData)
-        }
+                CircularProgressIndicator()
 
-        Spacer(modifier = Modifier.height(16.dp))
+            } else if (historyData.isEmpty()) {
 
-        if (isLoading) {
+                Text("No history data found.")
 
-            CircularProgressIndicator()
-
-        } else if (historyData.isEmpty()) {
-
-            Text("No history data found.")
-
-        } else {
-            LazyColumn(modifier = Modifier.fillMaxHeight(0.9f)) {
-                items(historyData) { record ->
-                    HistoryCard(record, expandedItems.contains(record.id)) {
-                        viewModel.toggleItemExpansion(record.id)
+            } else {
+                LazyColumn(modifier = Modifier.fillMaxHeight(0.9f)) {
+                    items(historyData) { record ->
+                        NewHistoryCard(
+                            record = record,
+                            isExpanded = expandedItems.contains(record.id),
+                            onToggle = { viewModel.toggleItemExpansion(record.id) },
+                            isSelectionMode = isSelectionMode,
+                            isSelected = selectedItems.contains(record.id),
+                            onLongClick = { viewModel.enableSelectionMode(record.id) },
+                            onClick = {
+                                if (isSelectionMode) {
+                                    viewModel.toggleItemSelection(record.id)
+                                } else {
+                                    viewModel.toggleItemExpansion(record.id)
+                                }
+                            }
+                        )
                     }
                 }
             }
-//            Spacer(modifier = Modifier.height(16.dp))
-//            SummaryDisplay(historyData)
+        }
+    }
+}
+
+@Composable
+fun SelectionTopBar(
+    selectedCount: Int,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+    onExport: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onCancel) {
+                Icon(Icons.Default.Close, contentDescription = "Cancel Selection")
+            }
+            Text("$selectedCount selected", style = MaterialTheme.typography.titleMedium)
+        }
+        Row {
+            IconButton(onClick = onExport) {
+                Icon(Icons.Default.Download, contentDescription = "Export")
+            }
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete")
+            }
         }
     }
 }
@@ -169,6 +249,79 @@ fun DropDownExportButton(context: Context, historyData: List<HistoryRecord>) {
         }
     }
 }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun NewHistoryCard(
+    record: HistoryRecord,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onLongClick: () -> Unit,
+    onClick: () -> Unit
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .padding(vertical = 4.dp)
+            .combinedClickable(
+                onLongClick = onLongClick,
+                onClick = onClick
+            ),
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSelectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = null,
+                        modifier = Modifier.padding(10.dp)
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(record.timestamp)
+                    Text(record.location)
+                }
+                if (!isSelectionMode) {
+                    IconButton(onClick = onToggle) {
+                        Icon(
+                            if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Expand"
+                        )
+                    }
+                }
+            }
+            //TODO: just display average
+            if (isExpanded) {
+                val avgHeight = record.dataPoints.map { it.height }.average()
+                val avgPeriod = record.dataPoints.map { it.period }.average() * 100
+                val avgDirection = record.dataPoints.map { it.direction }.average()
+
+                Text("Ave. Height: %.1f ft".format(avgHeight))
+                Text("Ave. Period: %.1f s".format(avgPeriod))
+                Text("Ave. Direction: %.1f°".format(avgDirection))
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                val sessionDataPoints = record.dataPoints.map {
+                    MeasuredWaveData(
+                        waveHeight = it.height,
+                        wavePeriod = it.period,
+                        waveDirection = it.direction,
+                        time = it.time
+                    )
+                }
+                HistoryGraph(waveData = sessionDataPoints, isXLabeled = false)
+            }
+        }
+    }
+}
+
+
 
 // Each data record gets a card view.
 @Composable
@@ -256,6 +409,7 @@ fun timestamp(): String {
     val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
     return sdf.format(Date())
 }
+
 
 
 

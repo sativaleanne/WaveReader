@@ -26,6 +26,32 @@ class HistoryViewModel(
     private val _expandedItems = MutableStateFlow<Set<String>>(emptySet())
     val expandedItems: StateFlow<Set<String>> = _expandedItems.asStateFlow()
 
+    //Select Items
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode = _isSelectionMode.asStateFlow()
+
+    private val _selectedItems = MutableStateFlow<Set<String>>(emptySet())
+    val selectedItems = _selectedItems.asStateFlow()
+
+    fun enableSelectionMode(itemId: String) {
+        _isSelectionMode.value = true
+        _selectedItems.value = setOf(itemId)
+    }
+
+    fun toggleItemSelection(itemId: String) {
+        _selectedItems.value = if (_selectedItems.value.contains(itemId)) {
+            _selectedItems.value - itemId
+        } else {
+            _selectedItems.value + itemId
+        }
+    }
+
+    fun clearSelection() {
+        _isSelectionMode.value = false
+        _selectedItems.value = emptySet()
+    }
+
+    // Filter Items
     private val _filterState = MutableStateFlow(HistoryFilterState())
     val filterState: StateFlow<HistoryFilterState> = _filterState.asStateFlow()
 
@@ -74,4 +100,5 @@ class HistoryViewModel(
         )
         updateFilter(defaultFilter)
     }
+
 }
