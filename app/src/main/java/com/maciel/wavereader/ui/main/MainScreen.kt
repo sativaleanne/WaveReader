@@ -154,13 +154,19 @@ fun DropDownMenuButton(
                 DropdownMenuItem(
                     text = { Text("History") },
                     leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                    onClick = onHistoryNavigate
+                    onClick = {
+                        expanded = false // Collapse the menu first
+                        onHistoryNavigate()
+                    }
                 )
             }
             DropdownMenuItem(
                 text = { Text("About") },
                 leadingIcon = { Icon(Icons.Default.Info, contentDescription = stringResource(R.string.informationbuttondescr)) },
-                onClick = onInfoNavigate
+                onClick = {
+                    expanded = false // Collapse the menu first
+                    onInfoNavigate()
+                }
             )
             DropdownMenuItem(
                 text = { Text("Sign In/Out") },

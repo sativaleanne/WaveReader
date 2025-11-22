@@ -1,7 +1,7 @@
 [versions]
 accompanistNavigationAnimation = "0.32.0"
 accompanistPermissions = "0.35.0-alpha"
-agp = "8.13.0"
+agp = "8.13.1"
 androidxJunit = "1.2.1"
 composeThemeAdapter = "1.2.1"
 converterGson = "latest.version"

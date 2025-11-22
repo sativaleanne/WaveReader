@@ -11,6 +11,7 @@ import retrofit2.Retrofit
 interface AppContainer {
     val waveApiRepository: WaveApiRepository
     val locationViewModel: LocationViewModel
+    val firestoreRepository: FirestoreRepository
 }
 
 class DefaultAppContainer : AppContainer {
@@ -37,6 +38,10 @@ class DefaultAppContainer : AppContainer {
 
     override val locationViewModel by lazy {
         LocationViewModel()
+    }
+
+    override val firestoreRepository: FirestoreRepository by lazy {
+        FirestoreRepository()
     }
 
 }

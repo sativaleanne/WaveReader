@@ -1,5 +1,6 @@
 package com.maciel.wavereader.ui.main
 
+import com.maciel.wavereader.BuildConfig
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,7 +35,7 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val coordinates by locationViewModel.coordinatesState.observeAsState()
-    val apiKey = context.getString(R.string.google_api_key)
+    val apiKey = BuildConfig.MAPS_API_KEY
 
     if (!Places.isInitialized()) {
         Places.initialize(context.applicationContext, apiKey)

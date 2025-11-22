@@ -27,6 +27,8 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -38,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -53,8 +56,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.maciel.wavereader.WaveReaderApplication
 import com.maciel.wavereader.model.HistoryRecord
 import com.maciel.wavereader.model.MeasuredWaveData
 import com.maciel.wavereader.ui.components.HistoryFilterPanel
@@ -70,14 +75,20 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(navController: NavHostController) {
-    val viewModel: HistoryViewModel = viewModel()
+    val context = LocalContext.current
+    val application = context.applicationContext as WaveReaderApplication
+    val firestoreRepository = application.container.firestoreRepository
+
+    val viewModel: HistoryViewModel = viewModel(
+        factory = HistoryViewModel.provideFactory(firestoreRepository)
+    )
     val historyData by viewModel.historyData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val expandedItems by viewModel.expandedItems.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedItems by viewModel.selectedItems.collectAsState()
 
-    val context = LocalContext.current
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     BackHandler {
         if (isSelectionMode) {
@@ -111,12 +122,29 @@ fun HistoryScreen(navController: NavHostController) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (isSelectionMode) {
+                val selectedHistoryData = historyData.filter { it.id in selectedItems }
                 SelectionTopBar(
+                    selectedItems = selectedHistoryData,
                     selectedCount = selectedItems.size,
                     onCancel = { viewModel.clearSelection() },
-                    onDelete = { /* handle delete */ },
-                    onExport = { /* handle export */ }
+                    onDelete = { showDeleteDialog = true }
                 )
+                if (showDeleteDialog) {
+                    AlertDialog(
+                        title = { Text("Delete Selected Sessions")},
+                        text = { Text("Are you sure you want to delete the selected sessions?") },
+                        onDismissRequest = { showDeleteDialog = false},
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.deleteSelectedItems()
+                                showDeleteDialog = false
+                            }) { Text("Delete")}
+                                        },
+                        dismissButton = {
+                            OutlinedButton(onClick = { showDeleteDialog = false }) { Text("Cancel")}
+                        }
+                    )
+                }
             } else {
                 // Buttons for filter, sort, or export
                 Row(
@@ -124,7 +152,12 @@ fun HistoryScreen(navController: NavHostController) {
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     DropDownFilterButton(viewModel)
-                    DropDownExportButton(context, historyData)
+                    DropDownExportMenu(historyData = historyData) { onClick ->
+                        Button(onClick = onClick, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
+                            Text("Export")
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Expand Icon")
+                        }
+                    }
                 }
             }
 
@@ -165,11 +198,11 @@ fun HistoryScreen(navController: NavHostController) {
 
 @Composable
 fun SelectionTopBar(
+    selectedItems: List<HistoryRecord>,
     selectedCount: Int,
     onCancel: () -> Unit,
-    onDelete: () -> Unit,
-    onExport: () -> Unit
-) {
+    onDelete: () -> Unit) {
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -184,8 +217,10 @@ fun SelectionTopBar(
             Text("$selectedCount selected", style = MaterialTheme.typography.titleMedium)
         }
         Row {
-            IconButton(onClick = onExport) {
-                Icon(Icons.Default.Download, contentDescription = "Export")
+            DropDownExportMenu(historyData = selectedItems) { onClick ->
+                IconButton(onClick = onClick) {
+                    Icon(Icons.Default.Download, contentDescription = "Export")
+                }
             }
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
@@ -220,7 +255,13 @@ fun DropDownFilterButton(viewModel: HistoryViewModel) {
 }
 
 @Composable
-fun DropDownExportButton(context: Context, historyData: List<HistoryRecord>) {
+fun DropDownExportMenu(
+    historyData: List<HistoryRecord>,
+    trigger: @Composable (onClick: () -> Unit) -> Unit
+) {
+    val context = LocalContext.current
+    var expanded by remember { mutableStateOf(false) }
+
     val createCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: Uri? -> uri?.let { exportToCsv(context, it, historyData) } }
@@ -229,22 +270,21 @@ fun DropDownExportButton(context: Context, historyData: List<HistoryRecord>) {
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? -> uri?.let { exportToJson(context, it, historyData) } }
 
-    var expanded by remember { mutableStateOf(false) }
+    Box {
+        trigger { expanded = !expanded }
 
-    Box(modifier = Modifier.padding(8.dp)) {
-        Button(onClick = { expanded = !expanded }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
-            Text("Export")
-            Icon(
-                if (!expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                contentDescription = "Expand Icon"
-            )
-        }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("Export to JSON") }, onClick = {
+            DropdownMenuItem(
+                text = { Text("Export to JSON") },
+                onClick = {
                 if (historyData.isNotEmpty()) createJsonLauncher.launch("wave_data_${timestamp()}.json")
+                    expanded = false
             })
-            DropdownMenuItem(text = { Text("Export to CSV") }, onClick = {
+            DropdownMenuItem(
+                text = { Text("Export to CSV") },
+                onClick = {
                 if (historyData.isNotEmpty()) createCsvLauncher.launch("wave_data_${timestamp()}.csv")
+                    expanded = false
             })
         }
     }

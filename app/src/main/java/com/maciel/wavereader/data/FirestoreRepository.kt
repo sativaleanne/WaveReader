@@ -4,16 +4,52 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.maciel.wavereader.model.HistoryRecord
+import com.maciel.wavereader.model.MeasuredWaveData
 import com.maciel.wavereader.model.WaveDataPoint
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class HistoryRepository(
+class FirestoreRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
+    fun saveSession(
+        measuredData: List<MeasuredWaveData>,
+        locationName: String,
+        latLng: Pair<Double, Double>?,
+        onSuccess: () -> Unit = {},
+        onFailure: (Exception) -> Unit = {}
+    ) {
+        val userId = auth.currentUser?.uid ?: return
+        if (measuredData.isEmpty()) return
+
+        val sessionData = hashMapOf(
+            "timestamp" to System.currentTimeMillis(),
+            "location" to locationName,
+            "dataPoints" to measuredData.map { data ->
+                mapOf(
+                    "time" to data.time,
+                    "height" to data.waveHeight,
+                    "period" to data.wavePeriod,
+                    "direction" to data.waveDirection
+                )
+            }
+        )
+
+        latLng?.let { (lat, lon) ->
+            sessionData["lat"] = lat
+            sessionData["lon"] = lon
+        }
+
+        firestore.collection("waveHistory")
+            .document(userId)
+            .collection("sessions")
+            .add(sessionData)
+            .addOnSuccessListener { onSuccess() }
+            .addOnFailureListener { e -> onFailure(e) }
+    }
 
     suspend fun fetchHistoryRecords(
         locationQuery: String = "",
@@ -72,6 +108,23 @@ class HistoryRepository(
         } catch (e: Exception) {
             println("Error fetching history: $e")
             emptyList()
+        }
+    }
+
+    suspend fun deleteHistoryRecord(recordId: String) {
+        val user = auth.currentUser ?: return
+
+        try {
+            firestore.collection("waveHistory")
+                .document(user.uid)
+                .collection("sessions")
+                .document(recordId)
+                .delete()
+                .await()
+            println("History record deleted successfully: $recordId")
+        } catch (e: Exception) {
+            println("Error deleting history record: $e")
+            throw e
         }
     }
 

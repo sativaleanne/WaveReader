@@ -12,7 +12,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val viewModel: SensorViewModel by viewModels()
+        // Get the repository from the container
+        val container = (application as WaveReaderApplication).container
+        val firestoreRepository = container.firestoreRepository
+
+        // Create ViewModel with factory
+        val viewModel: SensorViewModel by viewModels {
+            SensorViewModel.provideFactory(application, firestoreRepository)
+        }
+
         enableEdgeToEdge()
         setContent {
             WaveReaderTheme {
