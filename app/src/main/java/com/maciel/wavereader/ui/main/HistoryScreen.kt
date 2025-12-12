@@ -1,6 +1,5 @@
 package com.maciel.wavereader.ui.main
 
-import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,20 +16,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FilterAlt
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -54,12 +58,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import com.maciel.wavereader.WaveReaderApplication
+import com.maciel.wavereader.model.HistoryFilterState
 import com.maciel.wavereader.model.HistoryRecord
 import com.maciel.wavereader.model.MeasuredWaveData
 import com.maciel.wavereader.ui.components.HistoryFilterPanel
@@ -67,6 +71,7 @@ import com.maciel.wavereader.ui.graph.HistoryGraph
 import com.maciel.wavereader.utils.exportToCsv
 import com.maciel.wavereader.utils.exportToJson
 import com.maciel.wavereader.viewmodels.HistoryViewModel
+import com.maciel.wavereader.viewmodels.LocationViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,12 +83,14 @@ fun HistoryScreen(navController: NavHostController) {
     val context = LocalContext.current
     val application = context.applicationContext as WaveReaderApplication
     val firestoreRepository = application.container.firestoreRepository
+    val locationViewModel = application.container.locationViewModel
 
     val viewModel: HistoryViewModel = viewModel(
         factory = HistoryViewModel.provideFactory(firestoreRepository)
     )
     val historyData by viewModel.historyData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val filterState by viewModel.filterState.collectAsState()
     val expandedItems by viewModel.expandedItems.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedItems by viewModel.selectedItems.collectAsState()
@@ -132,7 +139,7 @@ fun HistoryScreen(navController: NavHostController) {
                 if (showDeleteDialog) {
                     AlertDialog(
                         title = { Text("Delete Selected Sessions")},
-                        text = { Text("Are you sure you want to delete the selected sessions?") },
+                        text = { Text("Are you sure you want to delete ${selectedItems.size} session(s)?") },
                         onDismissRequest = { showDeleteDialog = false},
                         confirmButton = {
                             Button(onClick = {
@@ -151,7 +158,7 @@ fun HistoryScreen(navController: NavHostController) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    DropDownFilterButton(viewModel)
+                    DropDownFilterButton(viewModel, locationViewModel)
                     DropDownExportMenu(historyData = historyData) { onClick ->
                         Button(onClick = onClick, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
                             Text("Export")
@@ -159,38 +166,114 @@ fun HistoryScreen(navController: NavHostController) {
                         }
                     }
                 }
+                ActiveFilterInfo(filter = viewModel.filterState.collectAsState().value)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
+            when {
+                isLoading -> {
+                    CircularProgressIndicator()
+                }
 
-                CircularProgressIndicator()
+                historyData.isEmpty() -> {
+                    // Show empty state
+                    val currentFilter by viewModel.filterState.collectAsState()
+                    EmptyHistoryState(
+                        filterState = currentFilter,
+                        onClearFilters = {
+                            viewModel.updateFilter(HistoryFilterState())
+                        }
+                    )
 
-            } else if (historyData.isEmpty()) {
+                }
 
-                Text("No history data found.")
-
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxHeight(0.9f)) {
-                    items(historyData) { record ->
-                        NewHistoryCard(
-                            record = record,
-                            isExpanded = expandedItems.contains(record.id),
-                            onToggle = { viewModel.toggleItemExpansion(record.id) },
-                            isSelectionMode = isSelectionMode,
-                            isSelected = selectedItems.contains(record.id),
-                            onLongClick = { viewModel.enableSelectionMode(record.id) },
-                            onClick = {
-                                if (isSelectionMode) {
-                                    viewModel.toggleItemSelection(record.id)
-                                } else {
-                                    viewModel.toggleItemExpansion(record.id)
+                else -> {
+                    LazyColumn(modifier = Modifier.fillMaxHeight(0.9f)) {
+                        items(historyData) { record ->
+                            NewHistoryCard(
+                                record = record,
+                                isExpanded = expandedItems.contains(record.id),
+                                onToggle = { viewModel.toggleItemExpansion(record.id) },
+                                isSelectionMode = isSelectionMode,
+                                isSelected = selectedItems.contains(record.id),
+                                onLongClick = { viewModel.enableSelectionMode(record.id) },
+                                onClick = {
+                                    if (isSelectionMode) {
+                                        viewModel.toggleItemSelection(record.id)
+                                    } else {
+                                        viewModel.toggleItemExpansion(record.id)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun EmptyHistoryState(
+    filterState: HistoryFilterState,
+    onClearFilters: () -> Unit
+) {
+    // Determine if any filters are active
+    val hasActiveFilter = filterState.searchLatLng != null ||
+            filterState.startDateMillis != null ||
+            filterState.endDateMillis != null
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = if (hasActiveFilter) Icons.Default.FilterAlt else Icons.Default.History,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = if (hasActiveFilter) "No matching records found" else "No history data yet",
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = if (hasActiveFilter) {
+                buildString {
+                    append("No records found")
+                    if (filterState.searchLatLng != null) {
+                        append(" within ${filterState.radiusMiles.toInt()} miles of ${filterState.locationQuery}")
+                    }
+                    if (filterState.startDateMillis != null || filterState.endDateMillis != null) {
+                        append(" in the selected date range")
+                    }
+                    append(".\n\nTry adjusting your filters or search criteria.")
+                }
+            } else {
+                "Record some wave data to see it here!"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+
+        if (hasActiveFilter) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(onClick = onClearFilters) {
+                Icon(Icons.Default.Clear, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Clear All Filters")
             }
         }
     }
@@ -230,10 +313,13 @@ fun SelectionTopBar(
 }
 
 @Composable
-fun DropDownFilterButton(viewModel: HistoryViewModel) {
+fun DropDownFilterButton(viewModel: HistoryViewModel, locationViewModel: LocationViewModel) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        Button(onClick = { expanded = !expanded }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
+        Button(
+            onClick = { expanded = !expanded },
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)
+        ) {
             Text("Filter")
             Icon(
                 if (!expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
@@ -244,6 +330,7 @@ fun DropDownFilterButton(viewModel: HistoryViewModel) {
             Column(Modifier.padding(12.dp)) {
                 HistoryFilterPanel(
                     initialFilter = viewModel.filterState.collectAsState().value,
+                    locationViewModel = locationViewModel,
                     onApply = {
                         viewModel.updateFilter(it)
                         expanded = false
@@ -277,7 +364,7 @@ fun DropDownExportMenu(
             DropdownMenuItem(
                 text = { Text("Export to JSON") },
                 onClick = {
-                if (historyData.isNotEmpty()) createJsonLauncher.launch("wave_data_${timestamp()}.json")
+                if (historyData.isNotEmpty()) createJsonLauncher.launch("WaveReader_${timestamp()}.json")
                     expanded = false
             })
             DropdownMenuItem(
@@ -448,6 +535,44 @@ fun SummaryDisplay( historyData: List<HistoryRecord> ) {
 fun timestamp(): String {
     val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
     return sdf.format(Date())
+}
+
+@Composable
+fun ActiveFilterInfo(filter: HistoryFilterState) {
+    if (filter.searchLatLng != null) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FilterAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text(
+                        text = "Filtering near: ${filter.locationQuery}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "Within ${filter.radiusMiles.toInt()} miles",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+            }
+        }
+    }
 }
 
 

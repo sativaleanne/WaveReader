@@ -1,62 +1,41 @@
 package com.maciel.wavereader.utils
 
-import org.jtransforms.fft.FloatFFT_1D
+import kotlin.math.PI
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sqrt
 
 /**
- * Sensor View Model for control the sensor manager and processing data
- * Resources: For calculations and data processing
- * https://www.ndbc.noaa.gov/faq/wavecalc.shtml
- * https://www.ndbc.noaa.gov/wavemeas.pdf
+ * Wave Calculations
  */
 
-// The significant wave height is derived from the zeroth spectral moment m0 represents the total wave energy.
-//
+// Extension functions for radians to degrees conversion
+// These replace Java's Math.toDegrees()
+fun Float.toDegrees(): Float = this * 180f / PI.toFloat()
+fun Double.toDegrees(): Double = this * 180.0 / PI
+
+// Calculate significant wave height
 fun calculateSignificantWaveHeight(m0: Float): Float {
     return 4 * sqrt(m0)
 }
 
-
-// Average Wave Period
-//
+// Calculate average wave period
 fun calculateAveragePeriod(m0: Float, m1: Float): Float {
     return if (m1 != 0f) m0 / m1 else 0f
 }
 
-// Hanning to reduce spectral leaks
+// Hanning window to reduce spectral leaks
 fun hanningWindow(data: List<Float>): List<Float> {
     val n = data.size
     return data.mapIndexed { i, value ->
-        val multiplier = 0.5f * (1 - kotlin.math.cos(2 * Math.PI * i / (n - 1))).toFloat()
+        val multiplier = 0.5f * (1 - cos(2 * PI * i / (n - 1))).toFloat()
         value * multiplier
     }
 }
 
-// Calculate FFT
-// Use JTransforms Fast Fourier Transform to transform from temporal domain to frequency domain
-fun getFft(data: List<Float>, n: Int): FloatArray {
-
-    val fft = FloatFFT_1D(n.toLong())
-
-    //Create array twice the size and add imaginary numbers for complex array
-    val fftArray = FloatArray(2*n)
-    for (i in data.indices) {
-        fftArray[ 2 * i ] = data[i]
-        fftArray[ 2 * i + 1 ] = 0f
-    }
-
-    //Perform FFT
-    fft.realForward(fftArray)
-    println("FFT Data After Transform: ${fftArray.contentToString()}")
-
-    return fftArray
-}
-
-// Get Index of max magnitude
+// Get Index of max magnitude in FFT output
 fun getPeakIndex(data: FloatArray, n: Int): Int {
-    //Get magnitudes
     var maxMagnitude = 0f
     var peakIndex = 0
 
@@ -73,7 +52,7 @@ fun getPeakIndex(data: FloatArray, n: Int): Int {
     return peakIndex
 }
 
-// Calcualtes phase difference between two orthogonal acceleration FFTs to estimate wave direction
+// Calculate wave direction using phase difference
 fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
     if (accelX.isEmpty() || accelY.isEmpty()) {
         println("Warning: data is empty!")
@@ -97,13 +76,13 @@ fun calculateWaveDirection(accelX: List<Float>, accelY: List<Float>): Float {
     val phaseDifference = phaseY - phaseX
 
     // Compute wave direction in degrees
-    var waveDirection = Math.toDegrees(phaseDifference.toDouble()).toFloat()
-    if (waveDirection < 0) waveDirection += 360 // Normalize to 0-360°
+    var waveDirection = phaseDifference.toDegrees()
+    if (waveDirection < 0) waveDirection += 360f // Normalize to 0-360°
 
     return waveDirection
 }
 
-//converts FFT output into a power spectrum (density per frequency band), normalized by FFT size.
+// Converts FFT output into a power spectrum (density per frequency band)
 fun computeSpectralDensity(fft: FloatArray, n: Int): List<Float> {
     val halfN = n / 2
     return (0 until halfN).map { i ->
@@ -113,7 +92,7 @@ fun computeSpectralDensity(fft: FloatArray, n: Int): List<Float> {
     }
 }
 
-//Each moment is calculated as the weighted sum of spectral density across frequencies
+// Calculate spectral moments
 fun calculateSpectralMoments(spectrum: List<Float>, samplingRate: Float): Triple<Float, Float, Float> {
     val df = samplingRate / (2 * spectrum.size) // frequency resolution
     val freq = spectrum.indices.map { it * df }
@@ -133,10 +112,7 @@ fun calculateSpectralMoments(spectrum: List<Float>, samplingRate: Float): Triple
     return Triple(m0, m1, m2)
 }
 
-/*
-* Significant height is a direct function of sqrt(m0)
-Zero-crossing period offers a stable baseline for comparisons (needed?)
-* */
+// Compute wave metrics from spectrum
 fun computeWaveMetricsFromSpectrum(m0: Float, m1: Float, m2: Float): Triple<Float, Float, Float> {
     val significantHeight = calculateSignificantWaveHeight(m0)
     val avgPeriod = calculateAveragePeriod(m0, m1)
@@ -144,6 +120,7 @@ fun computeWaveMetricsFromSpectrum(m0: Float, m1: Float, m2: Float): Triple<Floa
     return Triple(significantHeight, avgPeriod, zeroCrossingPeriod)
 }
 
+// Estimate zero-crossing period
 fun estimateZeroCrossingPeriod(signal: List<Float>, samplingRate: Float): Float {
     val zeroCrossings = mutableListOf<Int>()
 
@@ -162,6 +139,7 @@ fun estimateZeroCrossingPeriod(signal: List<Float>, samplingRate: Float): Float 
     return averageSamples / samplingRate  // period in seconds
 }
 
+// High-pass filter to remove drift
 fun highPassFilter(data: List<Float>, windowSize: Int): List<Float> {
     if (data.size < windowSize) return data
     val rollingAvg = data.windowed(windowSize, 1) { it.average().toFloat() }

@@ -1,7 +1,9 @@
 package com.maciel.wavereader.data
 
+import android.content.Context
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.maciel.wavereader.network.WaveApiService
+import com.maciel.wavereader.processing.SensorDataSource
 import com.maciel.wavereader.viewmodels.LocationViewModel
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -12,9 +14,10 @@ interface AppContainer {
     val waveApiRepository: WaveApiRepository
     val locationViewModel: LocationViewModel
     val firestoreRepository: FirestoreRepository
+    val sensorDataSource: SensorDataSource
 }
 
-class DefaultAppContainer : AppContainer {
+class DefaultAppContainer(private val applicationContext: Context) : AppContainer {
     private val waveBaseUrl = "https://marine-api.open-meteo.com/v1/"
 
     /**
@@ -42,6 +45,10 @@ class DefaultAppContainer : AppContainer {
 
     override val firestoreRepository: FirestoreRepository by lazy {
         FirestoreRepository()
+    }
+
+    override val sensorDataSource: SensorDataSource by lazy {
+        SensorDataSource(applicationContext)
     }
 
 }

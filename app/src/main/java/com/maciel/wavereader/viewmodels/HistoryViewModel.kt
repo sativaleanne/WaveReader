@@ -13,8 +13,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
-// TODO: Add Location View Model for location searching by zip and lat/long
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 class HistoryViewModel(
     private val firestoreRepository: FirestoreRepository = FirestoreRepository()
@@ -87,26 +89,76 @@ class HistoryViewModel(
         applyFilters()
     }
 
-    // Apply new filters from user selection update.
     private fun applyFilters() {
         val filter = _filterState.value
+        println("DEBUG: Applying filters")
+        println("  - Search coordinates: ${filter.searchLatLng}")
+        println("  - Radius: ${filter.radiusMiles} miles")
+        println("  - Location query (display): ${filter.locationQuery}")
+
         viewModelScope.launch {
             _isLoading.value = true
 
+            // Fetch all records from Firestore
             val raw = firestoreRepository.fetchHistoryRecords(
-                locationQuery = filter.locationQuery,
+                locationQuery = "", // Fetch all
                 sortDescending = filter.sortOrder == SortOrder.DATE_DESCENDING,
                 startDateMillis = filter.startDateMillis,
                 endDateMillis = filter.endDateMillis
             )
 
-            val filtered = raw.filter {
-                it.location.contains(filter.locationQuery, ignoreCase = true)
+            println("DEBUG: Fetched ${raw.size} raw records from Firestore")
+
+            // Apply location filtering based on coordinates and proximity
+            val filtered = if (filter.searchLatLng != null) {
+                raw.filter { record ->
+                    if (record.lat != null && record.lon != null) {
+                        val distance = calculateDistance(
+                            filter.searchLatLng.first,
+                            filter.searchLatLng.second,
+                            record.lat,
+                            record.lon
+                        )
+                        val withinRadius = distance <= filter.radiusMiles
+
+                        println("DEBUG: Record '${record.location}' at (${record.lat}, ${record.lon})")
+                        println("       Distance: ${distance.toInt()} miles - ${if (withinRadius) "INCLUDED" else "EXCLUDED"}")
+
+                        withinRadius
+                    } else {
+                        println("DEBUG: Record '${record.location}' has no coordinates - EXCLUDED")
+                        false
+                    }
+                }
+            } else {
+                println("DEBUG: No location filter applied - showing all records")
+                raw
             }
+
+            println("DEBUG: Final filtered count: ${filtered.size} records")
 
             _historyData.value = filtered
             _isLoading.value = false
         }
+    }
+
+    /**
+     * Calculate distance between two coordinates using Haversine formula
+     * Returns distance in miles
+     */
+    private fun calculateDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val earthRadiusMiles = 3959.0
+
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+
+        val a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2) * sin(dLon / 2)
+
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return earthRadiusMiles * c
     }
 
     // Expand data details
@@ -138,3 +190,4 @@ class HistoryViewModel(
         }
     }
 }
+

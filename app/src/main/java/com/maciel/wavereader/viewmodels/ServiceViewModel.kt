@@ -26,8 +26,12 @@ class ServiceViewModel(
     var serviceUiState: UiState<WaveDataResponse> by mutableStateOf(UiState.Loading)
         private set
 
+    private val _isSearching = mutableStateOf(false)
+    val isSearching: Boolean get() = _isSearching.value
+
     fun fetchWaveData(query: WaveApiQuery) {
         viewModelScope.launch {
+            _isSearching.value = true
             serviceUiState = UiState.Loading
             serviceUiState = try {
                 val data = waveApiRepository.getWaveApiData(query)
@@ -36,6 +40,8 @@ class ServiceViewModel(
                 UiState.Error("Network error")
             } catch (e: HttpException) {
                 UiState.Error("Server error")
+            } finally {
+                _isSearching.value = false
             }
         }
     }

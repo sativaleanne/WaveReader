@@ -1,6 +1,6 @@
 package com.maciel.wavereader.ui.main
 
-import com.maciel.wavereader.BuildConfig
+import android.widget.Toast
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,7 +18,7 @@ import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberMarkerState
-import com.maciel.wavereader.R
+import com.maciel.wavereader.BuildConfig
 import com.maciel.wavereader.utils.RequestLocationPermission
 import com.maciel.wavereader.viewmodels.LocationViewModel
 
@@ -46,7 +46,7 @@ fun MapScreen(
 
     RequestLocationPermission(
         onDenied = {
-            //TODO
+            Toast.makeText(context, "Location permission is required for map features", Toast.LENGTH_LONG).show()
         }
     ) {
         LaunchedEffect(Unit) {

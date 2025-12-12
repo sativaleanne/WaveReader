@@ -27,11 +27,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 @Composable
 fun WaveDataCard(
+    title: String,
     values: List<Float?>,
     labels: List<String>,
     units: List<String>
@@ -46,6 +48,7 @@ fun WaveDataCard(
             .padding(vertical = 8.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
+        Text(text = title, textAlign = TextAlign.Center, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp).fillMaxWidth())
         Row(
             modifier = Modifier
                 .fillMaxWidth()

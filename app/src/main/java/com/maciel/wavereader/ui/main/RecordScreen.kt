@@ -17,7 +17,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,7 +56,6 @@ fun RecordDataScreen(
         if (viewModel.checkSensors()) {
             // Display Data
             ShowRecordData(uiState = uiState, viewModel = viewModel)
-            //FakeRecordScreen()
             if (isSensorActive and uiState.measuredWaveList.isEmpty()) {
                 Text("Collecting Data...")
             }
@@ -191,7 +189,6 @@ fun ShowRecordData(
     viewModel: SensorViewModel
 ) {
     var displayOptions by remember { mutableStateOf(GraphDisplayOptions()) }
-    val confidence by viewModel.bigWaveConfidence.collectAsState()
 
     val height = uiState.height
     val period = uiState.period
@@ -201,18 +198,11 @@ fun ShowRecordData(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // Display Wave Data
             WaveDataCard(
+                "Average Conditions",
                 listOf(height, period, direction),
                 listOf("Height", "Period", "Direction"),
                 listOf("ft", "s", "°")
             )
-            //Removing Forecast prediction because it isn't useful
-//            if (displayOptions.showForecast && confidence > 0.8f) {
-//                Text(
-//                    text = "Big wave on it's way! (Confidence: ${(confidence * 100).toInt()}%)",
-//                    color = Color.Red,
-//                    fontWeight = FontWeight.Bold
-//                )
-//            }
             // Filter Graph display
             DropDownFilterGraphView(displayOptions, onUpdate = { displayOptions = it })
 
@@ -223,52 +213,3 @@ fun ShowRecordData(
     }
 }
 
-//Used for testing
-//@Composable
-//fun FakeRecordScreen(viewModel: FakeSensorViewModel = viewModel()) {
-//    val uiState by viewModel.uiState.collectAsState()
-//    var isRecording by remember { mutableStateOf(false) }
-//
-//    var displayOptions by remember { mutableStateOf(GraphDisplayOptions()) }
-//    val confidence by viewModel.bigWaveConfidence.collectAsState()
-//
-//    val height = uiState.height
-//    val period = uiState.period
-//    val direction = uiState.direction
-//
-//    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-//        WaveDataCard(
-//            listOf(height, period, direction),
-//            listOf("Height", "Period", "Direction"),
-//            listOf("ft", "s", "°")
-//        )
-//        if (displayOptions.showForecast && confidence > 0.8f) {
-//            Text(
-//                text = "Big wave on it's way! (Confidence: ${(confidence * 100).toInt()}%)",
-//                color = Color.Red,
-//                fontWeight = FontWeight.Bold
-//            )
-//        }
-//
-//        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-//            Button(onClick = {
-//                isRecording = !isRecording
-//                if (isRecording) viewModel.startSimulation()
-//                else viewModel.stopSimulation()
-//            }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
-//                Text(if (isRecording) "Pause" else "Record")
-//            }
-//
-//            Button(onClick = {
-//                viewModel.clearSimulation()
-//                isRecording = false
-//            }, elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp)) {
-//                Text("Clear")
-//            }
-//        }
-//
-//        Spacer(Modifier.height(8.dp))
-//
-//        SensorGraph(uiState.measuredWaveList, display = GraphDisplayOptions(true, true, true, false))
-//    }
-//}

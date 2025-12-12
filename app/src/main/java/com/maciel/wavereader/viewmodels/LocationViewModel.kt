@@ -21,8 +21,9 @@ class LocationViewModel : ViewModel() {
     private val _coordinatesState = MutableLiveData<Pair<Double, Double>>()
     val coordinatesState: LiveData<Pair<Double, Double>> = _coordinatesState
 
-    var locationError by mutableStateOf(false)
-        private set
+    private val _locationError = mutableStateOf(false)
+    val locationError: Boolean
+        get() = _locationError.value
 
     var displayLocationText by mutableStateOf("No location selected")
         private set
@@ -34,6 +35,15 @@ class LocationViewModel : ViewModel() {
             geocoder = Geocoder(context, Locale.getDefault())
         }
         return geocoder!!
+    }
+
+    fun resetLocationState() {
+        _locationError.value = false
+        displayLocationText = "No location selected"
+    }
+
+    private fun setLocationError(hasError: Boolean) {
+        _locationError.value = hasError
     }
 
     // Map interaction
@@ -54,7 +64,7 @@ class LocationViewModel : ViewModel() {
                 }
             }
         } catch (e: SecurityException) {
-            locationError = true
+            setLocationError(true)
             e.printStackTrace()
         }
     }
@@ -67,12 +77,12 @@ class LocationViewModel : ViewModel() {
             object : Geocoder.GeocodeListener {
                 override fun onGeocode(addresses: MutableList<Address>) {
                     handleGeocodeResult(addresses, fallback = {
-                        locationError = true
+                        setLocationError(true)
                     })
                 }
 
                 override fun onError(errorMessage: String?) {
-                    locationError = true
+                    setLocationError(true)
                 }
             }
         )
@@ -139,6 +149,7 @@ class LocationViewModel : ViewModel() {
             val lon = address.longitude
             updateCoordinates(lat, lon)
             displayLocationText = formatAddressOrCoordinates(address, lat, lon)
+            setLocationError(false)
         } else {
             fallback()
         }
@@ -146,6 +157,7 @@ class LocationViewModel : ViewModel() {
 
     fun updateCoordinates(lat: Double, lon: Double) {
         _coordinatesState.postValue(Pair(lat, lon))
+        setLocationError(false)
     }
 
     private fun formatAddressOrCoordinates(address: Address?, lat: Double, lon: Double): String {

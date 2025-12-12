@@ -11,24 +11,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,18 +39,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.maciel.wavereader.R
 import com.maciel.wavereader.model.ApiVariable
 import com.maciel.wavereader.model.FilterPreset
 import com.maciel.wavereader.model.WaveApiQuery
 import com.maciel.wavereader.model.WaveDataResponse
-import com.maciel.wavereader.ui.components.DropDownFilterSearchPresets
+import com.maciel.wavereader.ui.components.LocationSearchField
 import com.maciel.wavereader.ui.components.WaveDataCard
 import com.maciel.wavereader.ui.graph.ServiceGraph
 import com.maciel.wavereader.viewmodels.LocationViewModel
@@ -72,6 +67,7 @@ fun SearchDataScreen(
 ) {
     val serviceViewModel: ServiceViewModel = viewModel(factory = ServiceViewModel.Factory)
     val coordinates by locationViewModel.coordinatesState.observeAsState()
+    val isSearching = serviceViewModel.isSearching
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -89,10 +85,16 @@ fun SearchDataScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Search bar
-        SearchForLocation(
+        // Location Search Component
+        LocationSearchField(
             locationViewModel = locationViewModel,
-            fusedLocationClient = fusedLocationClient
+            label = "Search for a location",
+            placeholder = "City, coordinates, or zip code",
+            onLocationSelected = { lat, lon, displayText ->
+                // Location automatically updates in LocationViewModel
+                println("Selected: $displayText at ($lat, $lon)")
+            },
+            modifier = Modifier.fillMaxWidth()
         )
 
         // Display Location info
@@ -102,7 +104,7 @@ fun SearchDataScreen(
         )
 
         // Expandable Map Display Card
-        // TODO: SEPARATE INTO COMPOSABLE
+        // Separate into composable
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -136,79 +138,134 @@ fun SearchDataScreen(
             }
         }
 
-        // Search + Filters Button
-        DropDownFilterSearchPresets(
-            selectedPreset = selectedPreset,
-            onPresetSelected = {
-                selectedPreset = it
-                selectedVariables = it.variables
+//        // Search + Filters Button later
+//        DropDownFilterSearchPresets(
+//            selectedPreset = selectedPreset,
+//            onPresetSelected = {
+//                selectedPreset = it
+//                selectedVariables = it.variables
+//            }
+//        )
+
+        SearchButton(
+            coordinates = coordinates,
+            isSearching = isSearching,
+            onClick = {
+                coordinates?.let { (lat, lon) ->
+                    val query = WaveApiQuery(
+                        latitude = lat,
+                        longitude = lon,
+                        variables = selectedVariables.ifEmpty {
+                            setOf(ApiVariable.WaveHeight, ApiVariable.WaveDirection, ApiVariable.WavePeriod)
+                        },
+                        forecastDays = 1
+                    )
+                    serviceViewModel.fetchWaveData(query)
+                }
             }
         )
-        Button(
-            onClick = {
-            coordinates?.let { (lat, lon) ->
-                val query = WaveApiQuery(
-                    latitude = lat,
-                    longitude = lon,
-                    variables = selectedVariables.ifEmpty {
-                        setOf(ApiVariable.WaveHeight, ApiVariable.WaveDirection, ApiVariable.WavePeriod)
-                    },
-                    forecastDays = 1
-                )
-                serviceViewModel.fetchWaveData(query)
-            }
-        },
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
-            enabled = coordinates != null
-        ) {
-            Text("Search")
-        }
         // Display Data or current state of searching data
         ShowSearchData(serviceViewModel.serviceUiState)
     }
 }
 
-// Search Field for getting location and displaying on map
 @Composable
-fun SearchForLocation(
-    locationViewModel: LocationViewModel,
-    fusedLocationClient: FusedLocationProviderClient
+fun SearchButton(
+    coordinates: Pair<Double, Double>?,
+    isSearching: Boolean,
+    onClick: () -> Unit
 ) {
-    val context = LocalContext.current
-    var text by remember { mutableStateOf("") }
+    val isEnabled = coordinates != null && !isSearching
 
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it },
-            label = { Text("Search for a place") },
-            modifier = Modifier
-                .weight(1f)
-                .padding(end = 8.dp),
-            singleLine = true,
-            maxLines = 1,
-            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(
-                onSearch = {
-                    if (text.isNotBlank()) {
-                        locationViewModel.selectLocation(text, context)
-                    }
-                }
-            )
-        )
-        // Find Current Location
-        IconButton(
-            onClick = {
-                locationViewModel.fetchUserLocation(context, fusedLocationClient)
+    Button(
+        onClick = onClick,
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 1.dp),
+        enabled = isEnabled,
+        modifier = Modifier.fillMaxWidth(0.6f) // Make it a bit wider for better visibility
+    ) {
+        if (isSearching) {
+            // Show loading indicator while searching
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Searching...")
             }
-        ) {
-            Icon(
-                imageVector = Icons.Default.MyLocation,
-                contentDescription = "Use current location"
-            )
+        } else {
+            // Show search text with icon
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Search Wave Data")
+            }
         }
     }
+
+    // Show helper text when disabled
+    if (!isEnabled && !isSearching) {
+        Text(
+            text = "Please select a location to search",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
 }
+
+//// Search Field for getting location and displaying on map
+//@Composable
+//fun SearchForLocation(
+//    locationViewModel: LocationViewModel,
+//    fusedLocationClient: FusedLocationProviderClient
+//) {
+//    val context = LocalContext.current
+//    var text by remember { mutableStateOf("") }
+//
+//    Row(verticalAlignment = Alignment.CenterVertically) {
+//        OutlinedTextField(
+//            value = text,
+//            onValueChange = { text = it },
+//            label = { Text("Search for a place") },
+//            modifier = Modifier
+//                .weight(1f)
+//                .padding(end = 8.dp),
+//            singleLine = true,
+//            maxLines = 1,
+//            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
+//            keyboardActions = KeyboardActions(
+//                onSearch = {
+//                    if (text.isNotBlank()) {
+//                        locationViewModel.selectLocation(text, context)
+//                    }
+//                }
+//            )
+//        )
+//        // Find Current Location
+//        IconButton(
+//            onClick = {
+//                locationViewModel.fetchUserLocation(context, fusedLocationClient)
+//            }
+//        ) {
+//            Icon(
+//                imageVector = Icons.Default.MyLocation,
+//                contentDescription = "Use current location"
+//            )
+//        }
+//    }
+//}
 
 // Displaying Current state of searching data
 @Composable
@@ -244,6 +301,7 @@ fun SearchResultScreen(
             Column(modifier = Modifier.padding(16.dp)) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     WaveDataCard(
+                        "Current Conditions",
                         listOf(it.current?.waveHeight, it.current?.wavePeriod, it.current?.waveDirection),
                         listOf("Height", "Period", "Direction"),
                         listOf("ft", "s", "°")

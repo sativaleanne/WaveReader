@@ -15,10 +15,12 @@ class MainActivity : ComponentActivity() {
         // Get the repository from the container
         val container = (application as WaveReaderApplication).container
         val firestoreRepository = container.firestoreRepository
+        val sensorDataSource = container.sensorDataSource
+
 
         // Create ViewModel with factory
         val viewModel: SensorViewModel by viewModels {
-            SensorViewModel.provideFactory(application, firestoreRepository)
+            SensorViewModel.provideFactory(application, sensorDataSource, firestoreRepository)
         }
 
         enableEdgeToEdge()

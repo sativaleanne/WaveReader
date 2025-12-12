@@ -55,11 +55,11 @@ fun slope(data: List<Float>): Float {
     val yMean = data.average().toFloat()
 
     val numerator = x.zip(data).map {
-        (xi, yi) -> (xi - xMean) * (yi - yMean)
+            (xi, yi) -> (xi - xMean) * (yi - yMean)
     }.sum()
 
     val denominator = x.map {
-        xi -> (xi - xMean).pow(2)
+            xi -> (xi - xMean).pow(2)
     }.sum()
 
     return if (denominator == 0f) 0f else numerator / denominator
