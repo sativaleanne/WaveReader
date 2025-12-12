@@ -5,7 +5,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import androidx.wear.compose.materialcore.currentTimeMillis
 import com.maciel.wavereader.data.FirestoreRepository
 import com.maciel.wavereader.model.MeasuredWaveData
 import com.maciel.wavereader.processing.SensorDataSource
@@ -20,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.lang.System.currentTimeMillis
 
 /**
 * Sensor View Model for control the sensor manager and processing data
