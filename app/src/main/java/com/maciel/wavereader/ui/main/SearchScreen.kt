@@ -225,48 +225,6 @@ fun SearchButton(
     }
 }
 
-//// Search Field for getting location and displaying on map
-//@Composable
-//fun SearchForLocation(
-//    locationViewModel: LocationViewModel,
-//    fusedLocationClient: FusedLocationProviderClient
-//) {
-//    val context = LocalContext.current
-//    var text by remember { mutableStateOf("") }
-//
-//    Row(verticalAlignment = Alignment.CenterVertically) {
-//        OutlinedTextField(
-//            value = text,
-//            onValueChange = { text = it },
-//            label = { Text("Search for a place") },
-//            modifier = Modifier
-//                .weight(1f)
-//                .padding(end = 8.dp),
-//            singleLine = true,
-//            maxLines = 1,
-//            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Search),
-//            keyboardActions = KeyboardActions(
-//                onSearch = {
-//                    if (text.isNotBlank()) {
-//                        locationViewModel.selectLocation(text, context)
-//                    }
-//                }
-//            )
-//        )
-//        // Find Current Location
-//        IconButton(
-//            onClick = {
-//                locationViewModel.fetchUserLocation(context, fusedLocationClient)
-//            }
-//        ) {
-//            Icon(
-//                imageVector = Icons.Default.MyLocation,
-//                contentDescription = "Use current location"
-//            )
-//        }
-//    }
-//}
-
 // Displaying Current state of searching data
 @Composable
 fun ShowSearchData(

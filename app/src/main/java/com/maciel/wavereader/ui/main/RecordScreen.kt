@@ -55,7 +55,7 @@ fun RecordDataScreen(
     ) {
         if (viewModel.checkSensors()) {
             // Display Data
-            ShowRecordData(uiState = uiState, viewModel = viewModel)
+            ShowRecordData(uiState = uiState)
             if (isSensorActive and uiState.measuredWaveList.isEmpty()) {
                 Text("Collecting Data...")
             }
@@ -186,7 +186,6 @@ fun ClearButton(viewModel: SensorViewModel) {
 @Composable
 fun ShowRecordData(
     uiState: WaveUiState,
-    viewModel: SensorViewModel
 ) {
     var displayOptions by remember { mutableStateOf(GraphDisplayOptions()) }
 

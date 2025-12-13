@@ -34,7 +34,7 @@ private fun fft(x: Array<Complex>): Array<Complex> {
     if (n == 1) return x
 
     // Check if power of 2
-    if (n and (n - 1) != 0) {
+    if ((n and (n-1)) != 0) {
         throw IllegalArgumentException("FFT size must be power of 2, got $n")
     }
 
@@ -65,6 +65,8 @@ private fun fft(x: Array<Complex>): Array<Complex> {
  * Returns interleaved complex output: [real0, imag0, real1, imag1, ...]
  */
 fun getFft(data: List<Float>, n: Int): FloatArray {
+    println("FFT size: $n")
+
     // Convert input to Complex array
     val input = Array(n) { i ->
         if (i < data.size) {
@@ -73,6 +75,8 @@ fun getFft(data: List<Float>, n: Int): FloatArray {
             Complex(0.0, 0.0)
         }
     }
+    println("Input size: ${input.size}")
+
 
     // Perform FFT
     val output = fft(input)

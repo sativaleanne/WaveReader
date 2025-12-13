@@ -7,7 +7,7 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 
 /**
- * Android implementation using SensorManager
+ * Using SensorManager
  */
 
 data class SensorData(

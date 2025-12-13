@@ -90,7 +90,6 @@ fun HistoryScreen(navController: NavHostController) {
     )
     val historyData by viewModel.historyData.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
-    val filterState by viewModel.filterState.collectAsState()
     val expandedItems by viewModel.expandedItems.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedItems by viewModel.selectedItems.collectAsState()
@@ -191,7 +190,7 @@ fun HistoryScreen(navController: NavHostController) {
                 else -> {
                     LazyColumn(modifier = Modifier.fillMaxHeight(0.9f)) {
                         items(historyData) { record ->
-                            NewHistoryCard(
+                            HistoryCard(
                                 record = record,
                                 isExpanded = expandedItems.contains(record.id),
                                 onToggle = { viewModel.toggleItemExpansion(record.id) },
@@ -379,7 +378,7 @@ fun DropDownExportMenu(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NewHistoryCard(
+fun HistoryCard(
     record: HistoryRecord,
     isExpanded: Boolean,
     onToggle: () -> Unit,
@@ -422,72 +421,15 @@ fun NewHistoryCard(
                     }
                 }
             }
-            //TODO: just display average
+            //Display average only
             if (isExpanded) {
                 val avgHeight = record.dataPoints.map { it.height }.average()
                 val avgPeriod = record.dataPoints.map { it.period }.average() * 100
                 val avgDirection = record.dataPoints.map { it.direction }.average()
 
-                Text("Ave. Height: %.1f ft".format(avgHeight))
-                Text("Ave. Period: %.1f s".format(avgPeriod))
-                Text("Ave. Direction: %.1f°".format(avgDirection))
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val sessionDataPoints = record.dataPoints.map {
-                    MeasuredWaveData(
-                        waveHeight = it.height,
-                        wavePeriod = it.period,
-                        waveDirection = it.direction,
-                        time = it.time
-                    )
-                }
-                HistoryGraph(waveData = sessionDataPoints, isXLabeled = false)
-            }
-        }
-    }
-}
-
-
-
-// Each data record gets a card view.
-@Composable
-fun HistoryCard(
-    record: HistoryRecord,
-    isExpanded: Boolean,
-    onToggle: () -> Unit
-) {
-    ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(record.timestamp)
-                    Text(record.location)
-                }
-                IconButton(onClick = onToggle) {
-                    Icon(
-                        if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Expand"
-                    )
-                }
-            }
-            //TODO: just display average
-            if (isExpanded) {
-                val avgHeight = record.dataPoints.map { it.height }.average()
-                val avgPeriod = record.dataPoints.map { it.period }.average() * 100
-                val avgDirection = record.dataPoints.map { it.direction }.average()
-
-                Text("Ave. Height: %.1f ft".format(avgHeight))
-                Text("Ave. Period: %.1f s".format(avgPeriod))
-                Text("Ave. Direction: %.1f°".format(avgDirection))
+                Text("Avg. Height: %.1f ft".format(avgHeight))
+                Text("Avg. Period: %.1f s".format(avgPeriod))
+                Text("Avg. Direction: %.1f°".format(avgDirection))
 
                 Spacer(modifier = Modifier.height(8.dp))
 

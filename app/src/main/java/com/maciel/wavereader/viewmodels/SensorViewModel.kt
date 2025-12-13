@@ -44,7 +44,6 @@ class SensorViewModel(
     val uiState: StateFlow<WaveUiState> = _uiState.asStateFlow()
 
     private val _bigWaveConfidence = MutableStateFlow(0f)
-    val bigWaveConfidence: StateFlow<Float> = _bigWaveConfidence.asStateFlow()
 
     private val waveDataProcessor = WaveDataProcessor()
 
@@ -139,6 +138,7 @@ class SensorViewModel(
         direction: Float,
         time: Float
     ) {
+        println("RAW VALUES - Height: $height, Period: $period, Direction: $direction")
         _uiState.update { state ->
             val updated = state.measuredWaveList.toMutableList().apply {
                 add(MeasuredWaveData(height, period, direction, time))

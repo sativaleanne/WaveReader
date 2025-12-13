@@ -65,6 +65,7 @@ class WaveDataProcessor {
         // Segment data into overlapping windows
         val segments = overlapData(highPassed, windowSize, stepSize)
 
+
         val heights = mutableListOf<Float>()
         val periods = mutableListOf<Float>()
 
@@ -76,30 +77,35 @@ class WaveDataProcessor {
             // Median filter to remove noise
             val medianed = medianFilter(segment, 5)
 
+
             // Smoothing
             val smoothed = movingAverage(medianed, 5)
 
+
             // Windowing
             val windowed = hanningWindow(smoothed)
-
             // Compute frequency-domain features
             val fft = getFft(windowed, windowed.size)
             val spectrum = computeSpectralDensity(fft, windowed.size)
             val (m0, m1, m2) = calculateSpectralMoments(spectrum, samplingRate)
 
             // Get spectral and zero-crossing wave periods
-            val (sigWaveHeight, avePeriod, _) = computeWaveMetricsFromSpectrum(m0, m1, m2)
-            val zeroCrossPeriod = estimateZeroCrossingPeriod(segment, samplingRate)
+            val (sigWaveHeight, avePeriod, spectralZeroCrossPeriod) = computeWaveMetricsFromSpectrum(m0, m1, m2)
+            val measuredZeroCrossPeriod = estimateZeroCrossingPeriod(segment, samplingRate)
 
             // Stability
-            val blendedPeriod = if (zeroCrossPeriod.isFinite()) {
-                (avePeriod + zeroCrossPeriod) / 2f
-            } else avePeriod
+//            val finalPeriod = if (measuredZeroCrossPeriod.isFinite()) {
+//                (spectralZeroCrossPeriod + measuredZeroCrossPeriod) / 2f
+//            } else {
+//                spectralZeroCrossPeriod
+//            }
+            val finalPeriod = spectralZeroCrossPeriod
+
 
             // Only valid stuff
-            if (sigWaveHeight.isFinite() && blendedPeriod.isFinite()) {
+            if (sigWaveHeight.isFinite() && finalPeriod.isFinite()) {
                 heights.add(sigWaveHeight)
-                periods.add(blendedPeriod)
+                periods.add(finalPeriod)
             }
         }
 
@@ -108,6 +114,8 @@ class WaveDataProcessor {
         // Smoothing
         val avgHeight = heights.average().toFloat()
         val avgPeriod = periods.average().toFloat()
+
+        val avgHeightFeet = avgHeight * 3.28084f
 
         // Calculate wave direction using horizontal motion
         val accelX = horizontalAcceleration.map { it.first }
@@ -125,7 +133,7 @@ class WaveDataProcessor {
             (it + fftDirection) / 2f
         } ?: fftDirection
 
-        return Triple(avgHeight, avgPeriod, direction)
+        return Triple(avgHeightFeet, avgPeriod, direction)
     }
 
     /**

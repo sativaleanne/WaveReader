@@ -13,8 +13,8 @@ fun ServiceGraph(waveData: Hourly) {
 
     val lines = listOfNotNull(
         waveData.waveHeight?.let { GraphLine(it.filterNotNull(), "Wave Height", Color.Blue, "ft") },
-        waveData.wavePeriod?.let { GraphLine(it.filterNotNull(), "Wave Period", Color.Cyan, "s") },
-        waveData.waveDirection?.let { GraphLine(it.filterNotNull(), "Wave Direction", Color.Green, "°") },
+        waveData.wavePeriod?.let { GraphLine(it.filterNotNull(), "Wave Period", Color.hsl(180F, 1F, 0.27F), "s") },
+        waveData.waveDirection?.let { GraphLine(it.filterNotNull(), "Wave Direction", Color.hsl(137F, 0.52F, 0.33F), "°") },
         waveData.windWaveHeight?.let { GraphLine(it.filterNotNull(), "Wind Height", Color.Red, "ft") },
         waveData.windWavePeriod?.let { GraphLine(it.filterNotNull(), "Wind Period", Color.Magenta, "s") },
         waveData.windWaveDirection?.let { GraphLine(it.filterNotNull(), "Wind Direction", Color.Black, "°") },

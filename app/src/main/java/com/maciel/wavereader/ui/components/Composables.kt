@@ -63,8 +63,7 @@ fun WaveDataCard(
                     Text(labels[index], fontWeight = FontWeight.Bold)
                     Text(
                         text = values[index]?.let {
-                            val value = if (units[index] == "s") it * 100f else it
-                            String.format(Locale.US, "%.1f", value) + units[index]
+                            String.format(Locale.US, "%.1f", it) + units[index]
                         } ?: "-")
                 }
             }
