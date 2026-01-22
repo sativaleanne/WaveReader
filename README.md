@@ -2,6 +2,9 @@
 
 WaveReader is an Android app that measures and visualizes ocean wave conditions in real time using your phone’s built-in motion sensors. It features live wave tracking, historical data access, and wave API data—making it a powerful tool for surfers, sailors, and ocean enthusiasts.
 
+# Access the new WaveReader Here:
+[Now in Compose Multiplatform](https://github.com/sativaleanne/WaveReaderCMP/releases/tag/v1.0.1)
+
 ---
 
 ## Features
